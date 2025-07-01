@@ -69,7 +69,7 @@ export default function ProductDashboard() {
               <h1 className="text-3xl font-bold tracking-tight">Product Dashboard</h1>
               <p className="text-muted-foreground">Manage your product inventory and pricing</p>
             </div>
-            <Button asChild className="flex items-center gap-2">
+            <Button asChild className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white" >
               <Link href="/farmer/products/add">
                 <Plus className="h-4 w-4" />
                 Add Product
