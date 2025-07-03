@@ -1,11 +1,7 @@
 "use client"
 
-import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { TrendingUp, CheckCircle, X, Clock, AlertTriangle } from "lucide-react"
 import Image from "next/image"
 
 // Sample trending products data
@@ -17,6 +13,7 @@ const trendingProducts = [
     price: "Rs.45/kg",
     category: "Vegetables",
     sales: 24,
+    revenue: "Rs.1080",
   },
   {
     id: 2,
@@ -25,6 +22,7 @@ const trendingProducts = [
     price: "Rs.35/kg",
     category: "Vegetables",
     sales: 18,
+    revenue: "Rs.630",
   },
   {
     id: 3,
@@ -32,7 +30,8 @@ const trendingProducts = [
     image: "/assets/images/potatoes.jpg?height=100&width=100",
     price: "Rs.30/kg",
     category: "Vegetables",
-    sales: 15,
+    sales: "15 kg",
+    revenue: "Rs.450",
   },
   {
     id: 4,
@@ -40,7 +39,8 @@ const trendingProducts = [
     image: "/assets/images/carrots.jpg?height=100&width=100",
     price: "Rs.40/kg",
     category: "Vegetables",
-    sales: 12,
+    sales: "12 kg",
+    revenue: "Rs.480",
   },
   {
     id: 5,
@@ -48,7 +48,8 @@ const trendingProducts = [
     image: "/assets/images/apples.jpg?height=100&width=100",
     price: "Rs.120/kg",
     category: "Fruits",
-    sales: 30,
+    sales: "30 kg",
+    revenue: "Rs.3600",
   },
   {
     id: 6,
@@ -56,7 +57,8 @@ const trendingProducts = [
     image: "/assets/images/bananas.jpg?height=100&width=100",
     price: "Rs.60/dozen",
     category: "Fruits",
-    sales: 22,
+    sales: "22 kg",
+    revenue: "Rs.1320",
   },
   {
     id: 7,
@@ -64,7 +66,8 @@ const trendingProducts = [
     image: "/assets/images/mangoes.jpg?height=100&width=100",
     price: "Rs.200/kg",
     category: "Fruits",
-    sales: 35,
+    sales: "35 kg",
+    revenue: "Rs.7000",
   },
   {
     id: 8,
@@ -72,7 +75,8 @@ const trendingProducts = [
     image: "/assets/images/rice.jpg?height=100&width=100",
     price: "Rs.80/kg",
     category: "Grains",
-    sales: 20,
+    sales: "20 kg",
+    revenue: "Rs.1600",
   },
 ]
 
@@ -102,6 +106,7 @@ export default function TrendingProductsPage() {
                     <div>
                       <h3 className="font-medium">{product.name}</h3>
                       <p className="text-sm text-muted-foreground">{product.category}</p>
+                      <p className="font-bold text-green-600">Revenue: {product.revenue}</p>
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-green-600">{product.price}</p>
@@ -117,7 +122,3 @@ export default function TrendingProductsPage() {
     </div>
   )
 }
-
-
-
-//Total Sales and Revenue add
