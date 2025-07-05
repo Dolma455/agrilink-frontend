@@ -5,7 +5,16 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { Bell, Calendar, CheckCircle, Clock, Package, PackageX, TrendingUp, Users, X } from "lucide-react"
+import {
+  Bell,
+  Calendar,
+  CheckCircle,
+  Package,
+  PackageX,
+  TrendingUp,
+  Users,
+  X,
+} from "lucide-react"
 
 export default function Notifications() {
   const [notifications, setNotifications] = useState([
@@ -97,19 +106,6 @@ export default function Notifications() {
 
   const unreadCount = notifications.filter((n) => !n.read).length
 
-  const getPriorityBadge = (priority: string) => {
-    switch (priority) {
-      case "high":
-        return <Badge variant="destructive">High</Badge>
-      case "medium":
-        return <Badge variant="secondary">Medium</Badge>
-      case "low":
-        return <Badge variant="outline">Low</Badge>
-      default:
-        return null
-    }
-  }
-
   return (
     <div className="min-h-screen bg-gray-50/50 p-4 md:p-6 lg:p-8">
       <div className="mx-auto max-w-4xl space-y-6">
@@ -134,60 +130,21 @@ export default function Notifications() {
           )}
         </div>
 
-        {/* Notification Stats */}
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Unread</CardTitle>
-              <Bell className="h-4 w-4 text-red-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">{unreadCount}</div>
-              <p className="text-xs text-muted-foreground">New notifications</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">High Priority</CardTitle>
-              <Clock className="h-4 w-4 text-orange-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600">
-                {notifications.filter((n) => n.priority === "high").length}
-              </div>
-              <p className="text-xs text-muted-foreground">Require attention</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Today</CardTitle>
-              <Calendar className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">
-                {notifications.filter((n) => n.time.includes("hour") || n.time.includes("minute")).length}
-              </div>
-              <p className="text-xs text-muted-foreground">Notifications today</p>
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Notifications List */}
-        <Card>
-          <CardHeader>
+        <Card className="shadow-lg border border-gray-200">
+          <CardHeader className="sticky top-0 z-10 bg-white">
             <CardTitle>Recent Notifications</CardTitle>
             <CardDescription>All your product-related updates and alerts</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <Separator />
+          <CardContent className="space-y-4 max-h-[600px] overflow-y-auto">
             {notifications.map((notification, index) => {
               const Icon = notification.icon
               return (
                 <div key={notification.id}>
                   <div
                     className={`flex items-start gap-4 p-4 rounded-lg transition-colors ${
-                      !notification.read ? notification.bgColor : "bg-gray-50"
+                      !notification.read ? notification.bgColor : "bg-white hover:bg-gray-100"
                     }`}
                   >
                     <div className={`p-2 rounded-full ${notification.bgColor}`}>
@@ -198,22 +155,28 @@ export default function Notifications() {
                         <h4 className={`font-medium ${!notification.read ? "font-semibold" : ""}`}>
                           {notification.title}
                         </h4>
-                        <div className="flex items-center gap-2">
-                          {getPriorityBadge(notification.priority)}
-                          {!notification.read && <div className="h-2 w-2 bg-blue-600 rounded-full"></div>}
-                        </div>
                       </div>
                       <p className="text-sm text-muted-foreground">{notification.message}</p>
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between mt-2">
                         <span className="text-xs text-muted-foreground">{notification.time}</span>
                         <div className="flex items-center gap-2">
                           {!notification.read && (
-                            <Button variant="ghost" size="sm" onClick={() => markAsRead(notification.id)}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => markAsRead(notification.id)}
+                              className="text-blue-600 hover:text-blue-800"
+                            >
                               <CheckCircle className="h-4 w-4 mr-1" />
                               Mark as read
                             </Button>
                           )}
-                          <Button variant="ghost" size="sm" onClick={() => deleteNotification(notification.id)}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteNotification(notification.id)}
+                            className="text-red-600 hover:text-red-800"
+                          >
                             <X className="h-4 w-4" />
                           </Button>
                         </div>
