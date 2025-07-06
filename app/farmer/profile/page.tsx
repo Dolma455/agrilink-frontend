@@ -1,245 +1,214 @@
 "use client"
 
 import { useState } from "react"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Edit, Save, X, Lock, Trash2 } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
-import { Bell, Calendar, CheckCircle, Clock, Package, PackageX, TrendingUp, Users, X } from "lucide-react"
 
-export default function Notifications() {
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      type: "vendor-request",
-      title: "New vendor requests",
-      message: "Your product Tomatoes was requested by 2 vendors.",
-      time: "2 minutes ago",
-      read: false,
-      priority: "high",
-      icon: Users,
-      color: "text-blue-600",
-      bgColor: "bg-blue-50",
-    },
-    {
-      id: 2,
-      type: "expiry-warning",
-      title: "Product expiry warning",
-      message: "Your product Beans is nearing its availability end date.",
-      time: "1 hour ago",
-      read: false,
-      priority: "medium",
-      icon: Calendar,
-      color: "text-orange-600",
-      bgColor: "bg-orange-50",
-    },
-    {
-      id: 3,
-      type: "sold-out",
-      title: "Product sold out",
-      message: "Product Onions is now marked as Sold Out.",
-      time: "3 hours ago",
-      read: false,
-      priority: "high",
-      icon: PackageX,
-      color: "text-red-600",
-      bgColor: "bg-red-50",
-    },
-    {
-      id: 4,
-      type: "trending",
-      title: "Trending product",
-      message: "Your product Potatoes is trending with 15 new requests today.",
-      time: "5 hours ago",
-      read: true,
-      priority: "medium",
-      icon: TrendingUp,
-      color: "text-green-600",
-      bgColor: "bg-green-50",
-    },
-    {
-      id: 5,
-      type: "low-stock",
-      title: "Low stock alert",
-      message: "Product Carrots is running low (only 8kg remaining).",
-      time: "1 day ago",
-      read: true,
-      priority: "medium",
-      icon: Package,
-      color: "text-yellow-600",
-      bgColor: "bg-yellow-50",
-    },
-    {
-      id: 6,
-      type: "price-update",
-      title: "Price update successful",
-      message: "Price for Rice has been updated to ₹48/kg.",
-      time: "2 days ago",
-      read: true,
-      priority: "low",
-      icon: CheckCircle,
-      color: "text-green-600",
-      bgColor: "bg-green-50",
-    },
-  ])
+export default function FarmerProfile() {
+  const [isEditing, setIsEditing] = useState(false)
+  const [profileData, setProfileData] = useState({
+    name: "Ram Bahadur Thapa",
+    email: "ram.thapa@email.com",
+    phone: "+977-9841234567",
+    location: "Chitwan, Nepal",
+    farmName: "Green Valley Farm",
+    joinedDate: "March 2022",
+  })
 
-  const markAsRead = (id: number) => {
-    setNotifications(notifications.map((notif) => (notif.id === id ? { ...notif, read: true } : notif)))
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  })
+
+  const handleSave = () => {
+    setIsEditing(false)
+    console.log("Saving profile data:", profileData)
   }
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map((notif) => ({ ...notif, read: true })))
+  const handleCancel = () => {
+    setIsEditing(false)
   }
 
-  const deleteNotification = (id: number) => {
-    setNotifications(notifications.filter((notif) => notif.id !== id))
+  const handleChangePassword = () => {
+    console.log("Changing password:", passwordData)
+    // Reset fields
+    setPasswordData({
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    })
   }
 
-  const unreadCount = notifications.filter((n) => !n.read).length
-
-  const getPriorityBadge = (priority: string) => {
-    switch (priority) {
-      case "high":
-        return <Badge variant="destructive">High</Badge>
-      case "medium":
-        return <Badge variant="secondary">Medium</Badge>
-      case "low":
-        return <Badge variant="outline">Low</Badge>
-      default:
-        return null
+  const handleDeleteAccount = () => {
+    const confirmDelete = window.confirm("Are you sure you want to delete your account?")
+    if (confirmDelete) {
+      console.log("Deleting account...")
+      // delete logic here
     }
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/50 p-4 md:p-6 lg:p-8">
-      <div className="mx-auto max-w-4xl space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="space-y-2">
-            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-              <Bell className="h-8 w-8" />
-              Notifications
-              {unreadCount > 0 && (
-                <Badge variant="destructive" className="ml-2">
-                  {unreadCount} new
-                </Badge>
-              )}
-            </h1>
-            <p className="text-muted-foreground">Stay updated with your product activities</p>
-          </div>
-          {unreadCount > 0 && (
-            <Button variant="outline" onClick={markAllAsRead}>
-              Mark all as read
+    <div className="h-screen overflow-y-auto bg-gray-50 p-6 space-y-6">
+
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">My Profile</h1>
+          <p className="text-gray-600">Manage your farmer profile</p>
+        </div>
+        <div className="flex gap-2">
+          {isEditing ? (
+            <>
+              <Button onClick={handleSave} className="bg-green-600 hover:bg-green-700">
+                <Save className="h-4 w-4 mr-2" />
+                Save
+              </Button>
+              <Button onClick={handleCancel} variant="outline">
+                <X className="h-4 w-4 mr-2" />
+                Cancel
+              </Button>
+            </>
+          ) : (
+            <Button onClick={() => setIsEditing(true)} variant="outline">
+              <Edit className="h-4 w-4 mr-2" />
+              Edit Profile
             </Button>
           )}
         </div>
-
-        {/* Notification Stats */}
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Unread</CardTitle>
-              <Bell className="h-4 w-4 text-red-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">{unreadCount}</div>
-              <p className="text-xs text-muted-foreground">New notifications</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">High Priority</CardTitle>
-              <Clock className="h-4 w-4 text-orange-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600">
-                {notifications.filter((n) => n.priority === "high").length}
-              </div>
-              <p className="text-xs text-muted-foreground">Require attention</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Today</CardTitle>
-              <Calendar className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">
-                {notifications.filter((n) => n.time.includes("hour") || n.time.includes("minute")).length}
-              </div>
-              <p className="text-xs text-muted-foreground">Notifications today</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Notifications List */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Notifications</CardTitle>
-            <CardDescription>All your product-related updates and alerts</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {notifications.map((notification, index) => {
-              const Icon = notification.icon
-              return (
-                <div key={notification.id}>
-                  <div
-                    className={`flex items-start gap-4 p-4 rounded-lg transition-colors ${
-                      !notification.read ? notification.bgColor : "bg-gray-50"
-                    }`}
-                  >
-                    <div className={`p-2 rounded-full ${notification.bgColor}`}>
-                      <Icon className={`h-5 w-5 ${notification.color}`} />
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <h4 className={`font-medium ${!notification.read ? "font-semibold" : ""}`}>
-                          {notification.title}
-                        </h4>
-                        <div className="flex items-center gap-2">
-                          {getPriorityBadge(notification.priority)}
-                          {!notification.read && <div className="h-2 w-2 bg-blue-600 rounded-full"></div>}
-                        </div>
-                      </div>
-                      <p className="text-sm text-muted-foreground">{notification.message}</p>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">{notification.time}</span>
-                        <div className="flex items-center gap-2">
-                          {!notification.read && (
-                            <Button variant="ghost" size="sm" onClick={() => markAsRead(notification.id)}>
-                              <CheckCircle className="h-4 w-4 mr-1" />
-                              Mark as read
-                            </Button>
-                          )}
-                          <Button variant="ghost" size="sm" onClick={() => deleteNotification(notification.id)}>
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  {index < notifications.length - 1 && <Separator className="my-2" />}
-                </div>
-              )
-            })}
-          </CardContent>
-        </Card>
-
-        {/* Empty State */}
-        {notifications.length === 0 && (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Bell className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium mb-2">No notifications</h3>
-              <p className="text-muted-foreground text-center">
-                You're all caught up! New notifications will appear here.
-              </p>
-            </CardContent>
-          </Card>
-        )}
       </div>
+
+      {/* Profile Details */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Profile Details</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="flex flex-col items-center space-y-4">
+            <Avatar className="w-32 h-32">
+              <AvatarImage src="/placeholder.svg" />
+              <AvatarFallback className="text-2xl">
+                {profileData.name.split(" ").map((n) => n[0]).join("")}
+              </AvatarFallback>
+            </Avatar>
+            <div className="text-center">
+              <h3 className="text-lg font-semibold">{profileData.name}</h3>
+              <p className="text-gray-600">{profileData.farmName}</p>
+              <Badge className="mt-2 bg-green-100 text-green-800">Verified Farmer</Badge>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <Label>Full Name</Label>
+              <Input
+                value={profileData.name}
+                onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
+                disabled={!isEditing}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input
+                value={profileData.email}
+                onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
+                disabled={!isEditing}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Phone</Label>
+              <Input
+                value={profileData.phone}
+                onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
+                disabled={!isEditing}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Location</Label>
+              <Input
+                value={profileData.location}
+                onChange={(e) => setProfileData({ ...profileData, location: e.target.value })}
+                disabled={!isEditing}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Farm Name</Label>
+              <Input
+                value={profileData.farmName}
+                onChange={(e) => setProfileData({ ...profileData, farmName: e.target.value })}
+                disabled={!isEditing}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Joined Date</Label>
+              <Input value={profileData.joinedDate} disabled />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Change Password */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Lock className="h-5 w-5" />
+            Change Password
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 max-w-xl">
+          <div className="space-y-2">
+            <Label>Current Password</Label>
+            <Input
+              type="password"
+              value={passwordData.currentPassword}
+              onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>New Password</Label>
+            <Input
+              type="password"
+              value={passwordData.newPassword}
+              onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Confirm New Password</Label>
+            <Input
+              type="password"
+              value={passwordData.confirmPassword}
+              onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+            />
+          </div>
+          <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleChangePassword}>
+            Update Password
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Delete Account */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-red-600">
+            <Trash2 className="h-5 w-5" />
+            Delete Account
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Once you delete your account, there is no going back. Please be certain.
+          </p>
+          <Button variant="destructive" onClick={handleDeleteAccount}>
+            Delete My Account
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   )
 }
