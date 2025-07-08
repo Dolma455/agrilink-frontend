@@ -15,33 +15,25 @@ const navigation = [
     icon: Home,
   },
   {
-    name: "Browse Products",
-    href: "/vendor/products",
-    icon: Package,
-  },
-  {
-    name: "My Orders",
-    href: "/vendor/orders",
+    name: "Requests",
+    href: "/vendor/requests",
     icon: ShoppingCart,
     children: [
-      { name: "All Orders", href: "/vendor/orders" },
-      { name: "Pending", href: "/vendor/orders/pending" },
-      { name: "Confirmed", href: "/vendor/orders/confirmed" },
-      { name: "Delivered", href: "/vendor/orders/delivered" },
+      { name: "All Requests", href: "/vendor/requests" },
     ],
   },
   {
-    name: "Deliveries",
-    href: "/vendor/deliveries",
+    name: "Sold Products",
+    href: "/vendor/sold-products",
     icon: Truck,
   },
   {
-    name: "Vendors Network",
-    href: "/vendor/network",
+    name: "My Orders",
+    href: "/vendor/my-orders",
     icon: Store,
   },
   {
-    name: "Reports",
+    name: "Reports & Stats",
     href: "/vendor/reports",
     icon: BarChart3,
   },
@@ -49,11 +41,6 @@ const navigation = [
     name: "Notifications",
     href: "/vendor/notifications",
     icon: Bell,
-  },
-  {
-    name: "Profile",
-    href: "/vendor/profile",
-    icon: User,
   },
 ]
 
