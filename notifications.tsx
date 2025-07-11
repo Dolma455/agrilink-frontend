@@ -17,91 +17,118 @@ import {
 } from "lucide-react"
 
 export default function Notifications() {
-  const [notifications, setNotifications] = useState([
+  // Change this to "farmer" or "vendor"
+  const [userRole] = useState<"farmer" | "vendor">("vendor")
+
+  // Notification content for farmer
+  const farmerNotifications = [
     {
       id: 1,
-      type: "vendor-request",
       title: "New vendor requests",
       message: "Your product Tomatoes was requested by 2 vendors.",
       time: "2 minutes ago",
       read: false,
-      priority: "high",
       icon: Users,
       color: "text-blue-600",
       bgColor: "bg-blue-50",
     },
     {
       id: 2,
-      type: "expiry-warning",
       title: "Product expiry warning",
       message: "Your product Beans is nearing its availability end date.",
       time: "1 hour ago",
       read: false,
-      priority: "medium",
       icon: Calendar,
       color: "text-orange-600",
       bgColor: "bg-orange-50",
     },
     {
       id: 3,
-      type: "sold-out",
       title: "Product sold out",
       message: "Product Onions is now marked as Sold Out.",
       time: "3 hours ago",
       read: false,
-      priority: "high",
       icon: PackageX,
       color: "text-red-600",
       bgColor: "bg-red-50",
     },
     {
       id: 4,
-      type: "trending",
       title: "Trending product",
       message: "Your product Potatoes is trending with 15 new requests today.",
       time: "5 hours ago",
       read: true,
-      priority: "medium",
       icon: TrendingUp,
       color: "text-green-600",
       bgColor: "bg-green-50",
     },
+  ]
+
+  // Notification content for vendor
+  const vendorNotifications = [
     {
-      id: 5,
-      type: "low-stock",
-      title: "Low stock alert",
-      message: "Product Carrots is running low (only 8kg remaining).",
-      time: "1 day ago",
-      read: true,
-      priority: "medium",
+      id: 101,
+      title: "New stock available",
+      message: "Fresh Tomatoes from Raju Lama are now available.",
+      time: "Just now",
+      read: false,
       icon: Package,
-      color: "text-yellow-600",
-      bgColor: "bg-yellow-50",
-    },
-    {
-      id: 6,
-      type: "price-update",
-      title: "Price update successful",
-      message: "Price for Rice has been updated to ₹48/kg.",
-      time: "2 days ago",
-      read: true,
-      priority: "low",
-      icon: CheckCircle,
       color: "text-green-600",
       bgColor: "bg-green-50",
     },
-  ])
+    {
+      id: 102,
+      title: "Delivery delay alert",
+      message: "Your Beans delivery from Gita Rai will be delayed by 1 day.",
+      time: "30 minutes ago",
+      read: false,
+      icon: Calendar,
+      color: "text-orange-600",
+      bgColor: "bg-orange-50",
+    },
+    {
+      id: 103,
+      title: "Order confirmed",
+      message: "Your order for 50kg Potatoes from Shyam BK has been confirmed.",
+      time: "2 hours ago",
+      read: true,
+      icon: CheckCircle,
+      color: "text-blue-600",
+      bgColor: "bg-blue-50",
+    },
+    {
+      id: 104,
+      title: "Order cancelled",
+      message: "Farmer Sunita cancelled the delivery of Onions due to rain.",
+      time: "1 day ago",
+      read: true,
+      icon: PackageX,
+      color: "text-red-600",
+      bgColor: "bg-red-50",
+    },
+  ]
+
+  // Load appropriate content
+  const [notifications, setNotifications] = useState(
+    userRole === "farmer" ? farmerNotifications : vendorNotifications
+  )
 
   const markAsRead = (id: number) => {
-    setNotifications(notifications.map((notif) => (notif.id === id ? { ...notif, read: true } : notif)))
+    setNotifications(
+      notifications.map((n) => (n.id === id ? { ...n, read: true } : n))
+    )
   }
 
   const markAllAsRead = () => {
-    setNotifications(notifications.map((notif) => ({ ...notif, read: true })))
+    setNotifications(
+      notifications.map((n) => ({ ...n, read: true }))
+    )
   }
 
   const deleteNotification = (id: number) => {
-    setNotifications(notifications.filter((notif) => notif.id !== id))
+    setNotifications(
+      notifications.filter((n) => n.id !== id)
+    )
   }
 
   const unreadCount = notifications.filter((n) => !n.read).length
@@ -121,7 +148,11 @@ export default function Notifications() {
                 </Badge>
               )}
             </h1>
-            <p className="text-muted-foreground">Stay updated with your product activities</p>
+            <p className="text-muted-foreground">
+              {userRole === "vendor"
+                ? "View your stock, delivery and order updates"
+                : "Stay updated with your product activity"}
+            </p>
           </div>
           {unreadCount > 0 && (
             <Button variant="outline" onClick={markAllAsRead}>
@@ -134,7 +165,11 @@ export default function Notifications() {
         <Card className="shadow-lg border border-gray-200">
           <CardHeader className="sticky top-0 z-10 bg-white">
             <CardTitle>Recent Notifications</CardTitle>
-            <CardDescription>All your product-related updates and alerts</CardDescription>
+            <CardDescription>
+              {userRole === "vendor"
+                ? "Your vendor updates"
+                : "Your product and request updates"}
+            </CardDescription>
           </CardHeader>
           <Separator />
           <CardContent className="space-y-4 max-h-[600px] overflow-y-auto">
