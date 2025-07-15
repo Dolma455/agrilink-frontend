@@ -29,7 +29,7 @@ const navigation = [
   },
   {
     name: "My Orders",
-    href: "/vendor/my-orders",
+    href: "/vendor/orders",
     icon: Store,
   },
   {

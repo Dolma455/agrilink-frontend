@@ -4,7 +4,8 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Calendar, MapPin, User, Mail, Phone } from "lucide-react"
+import { Calendar, MapPin, User, Mail, Phone, Plus } from "lucide-react"
+import Link from "next/link"
 
 const initialFarmerRequests = [
   {
@@ -79,10 +80,18 @@ export default function VendorRequests() {
     <div className="min-h-screen bg-gray-50">
       <div className="p-6">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Requests by Farmers</h1>
-          <p className="text-gray-600">These are the requests sent by farmers</p>
-        </div>
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                  <div className="mb-8">
+                    <h1 className="text-3xl font-bold tracking-tight">Requests by Farmers</h1>
+                    <p className="text-muted-foreground">These are the requests sent by farmers</p>
+                  </div>
+                  <Button asChild className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white" >
+                      <Link href="/vendor/orders/place-order">
+                        <Plus className="h-4 w-4" />
+                        Place Order
+                      </Link>
+                    </Button>
+                </div>
 
         {/* Requests List */}
         <div className="space-y-4">
