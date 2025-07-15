@@ -29,6 +29,7 @@ interface FormProduct {
   price: number
   deliveryDate: string
   location: string
+  farmName?: string
 }
 
 export default function ProductForm() {
@@ -47,6 +48,7 @@ export default function ProductForm() {
     price: 0,
     deliveryDate: "",
     location: "",
+    farmName: "Your order will be placed to all registered farmers",
   })
 
   const unitOptions = ["kg", "liter", "piece", "dozen", "quintal", "ton", "meter"]
@@ -240,6 +242,14 @@ export default function ProductForm() {
                   className="pl-8"
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Farm Name</Label>
+              <p className="px-3 py-2 border rounded-md bg-gray-100 text-sm text-gray-700">
+                Your order will be submitted to all registered farmers.
+              </p>
+
             </div>
           </CardContent>
 

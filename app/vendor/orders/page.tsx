@@ -8,19 +8,33 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { CheckCircle, Clock, Delete, DeleteIcon, Eye, Filter, MoreHorizontal, Package, Plus, Search, Trash, Truck, XCircle } from "lucide-react"
+import { Dialog, DialogTrigger, DialogContent, DialogTitle } from "@/components/ui/dialog"
+import { CheckCircle, Clock, Eye, Filter, Package, Plus, Search, Trash } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 
 export default function VendorOrdersPage() {
   const router = useRouter()
-
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [dateFilter, setDateFilter] = useState("all")
-
-  const orders = [
+  type Order = {
+    id: string
+    product: string
+    quantity: string
+    requestedPrice: string
+    totalAmount: string
+    status: string
+    requestDate: string
+    farmer: string
+    farmName: string
+    location: string
+    expectedDelivery: string
+    productImage: string
+  }
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  const [orderList, setOrderList] = useState([
     {
       id: "ORD001",
       product: "Tomatoes",
@@ -33,6 +47,7 @@ export default function VendorOrdersPage() {
       farmName: "Green Valley Farm",
       location: "Punjab",
       expectedDelivery: "2024-01-18",
+      productImage: "/assets/images/tomatoes.jpg?height=200&width=200"
     },
     {
       id: "ORD002",
@@ -40,12 +55,13 @@ export default function VendorOrdersPage() {
       quantity: "30kg",
       requestedPrice: "Rs.40/kg",
       totalAmount: "Rs.1,200",
-      status: "accepted",
+      status: "pending",
       requestDate: "2024-01-14",
       farmer: "Sita Devi",
       farmName: "Organic Fields",
       location: "Haryana",
       expectedDelivery: "2024-01-17",
+      productImage: "/assets/images/onions.jpg?height=200&width=200"
     },
     {
       id: "ORD003",
@@ -59,6 +75,7 @@ export default function VendorOrdersPage() {
       farmName: "Hill View Farm",
       location: "Himachal Pradesh",
       expectedDelivery: "2024-01-15",
+      productImage: "/assets/images/potatoes.jpg?height=200&width=200"
     },
     {
       id: "ORD004",
@@ -66,12 +83,13 @@ export default function VendorOrdersPage() {
       quantity: "25kg",
       requestedPrice: "Rs.35/kg",
       totalAmount: "Rs.875",
-      status: "rejected",
+      status: "delivered",
       requestDate: "2024-01-13",
       farmer: "Multiple Farmers",
       farmName: "Various",
       location: "Various",
       expectedDelivery: "-",
+      productImage: "/assets/images/carrots.jpg?height=200&width=200"
     },
     {
       id: "ORD005",
@@ -79,22 +97,20 @@ export default function VendorOrdersPage() {
       quantity: "100kg",
       requestedPrice: "Rs.45/kg",
       totalAmount: "Rs.4,500",
-      status: "confirmed",
+      status: "pending",
       requestDate: "2024-01-16",
       farmer: "Mohan Singh",
       farmName: "Golden Grains",
       location: "Punjab",
       expectedDelivery: "2024-01-19",
+      productImage: "/assets/images/rice.jpg?height=200&width=200"
     },
-  ]
+  ])
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       pending: { label: "Pending", variant: "secondary" as const, icon: Clock, color: "" },
-      accepted: { label: "Accepted", variant: "default" as const, icon: CheckCircle, color: "bg-blue-100 text-blue-800" },
-      confirmed: { label: "Confirmed", variant: "default" as const, icon: CheckCircle, color: "bg-green-100 text-green-800" },
       delivered: { label: "Delivered", variant: "default" as const, icon: Package, color: "bg-green-100 text-green-800" },
-      rejected: { label: "Rejected", variant: "destructive" as const, icon: XCircle, color: "bg-red-100 text-red-800" },
     }
 
     const config = statusConfig[status as keyof typeof statusConfig]
@@ -108,7 +124,7 @@ export default function VendorOrdersPage() {
     )
   }
 
-  const filteredOrders = orders.filter((order) => {
+  const filteredOrders = orderList.filter((order) => {
     const matchesSearch =
       order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.product.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -135,17 +151,15 @@ export default function VendorOrdersPage() {
     return matchesSearch && matchesStatus && matchesDate
   })
 
-  const stats = {
-    pending: orders.filter((o) => o.status === "pending").length,
-    accepted: orders.filter((o) => o.status === "accepted").length,
-    confirmed: orders.filter((o) => o.status === "confirmed").length,
-    delivered: orders.filter((o) => o.status === "delivered").length,
+  const handleDelete = (id: string) => {
+    const updatedOrders = orderList.filter(order => order.id !== id)
+    setOrderList(updatedOrders)
   }
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="p-6 space-y-6">
-        {/* Header */}
+         {/* Header */}
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">My Orders</h1>
@@ -157,53 +171,6 @@ export default function VendorOrdersPage() {
                 Place Order
               </Link>
             </Button>
-        </div>
-
-        {/* Summary Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending</CardTitle>
-              <Clock className="h-4 w-4 text-orange-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600">{stats.pending}</div>
-              <p className="text-xs text-muted-foreground">Awaiting farmer response</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Accepted</CardTitle>
-              <CheckCircle className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">{stats.accepted}</div>
-              <p className="text-xs text-muted-foreground">Accepted by farmers</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Confirmed</CardTitle>
-              <CheckCircle className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{stats.confirmed}</div>
-              <p className="text-xs text-muted-foreground">Ready for delivery</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Delivered</CardTitle>
-              <Package className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{stats.delivered}</div>
-              <p className="text-xs text-muted-foreground">Completed orders</p>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Filters and Search */}
@@ -239,10 +206,7 @@ export default function VendorOrdersPage() {
                   <SelectContent>
                     <SelectItem value="all">All Statuses</SelectItem>
                     <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="accepted">Accepted</SelectItem>
-                    <SelectItem value="confirmed">Confirmed</SelectItem>
                     <SelectItem value="delivered">Delivered</SelectItem>
-                    <SelectItem value="rejected">Rejected</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -279,7 +243,6 @@ export default function VendorOrdersPage() {
           </CardContent>
         </Card>
 
-        {/* Orders Table */}
         <Card>
           <CardHeader>
             <CardTitle>Orders ({filteredOrders.length})</CardTitle>
@@ -307,7 +270,7 @@ export default function VendorOrdersPage() {
                       <TableCell>{order.product}</TableCell>
                       <TableCell>{order.quantity}</TableCell>
                       <TableCell>{order.requestedPrice}</TableCell>
-                      <TableCell className="font-medium">{order.totalAmount}</TableCell>
+                      <TableCell>{order.totalAmount}</TableCell>
                       <TableCell>
                         <div>
                           <div className="font-medium">{order.farmer}</div>
@@ -318,14 +281,43 @@ export default function VendorOrdersPage() {
                       <TableCell>{getStatusBadge(order.status)}</TableCell>
                       <TableCell>{order.requestDate}</TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button variant="outline" size="sm">
-                            <Eye className="h-4 w-4 mr-1" />
+                        <div className="flex justify-end gap-2">
+                          <Dialog>
+                            <DialogTrigger asChild>
+                               <Button variant="outline" size="sm" onClick={() => setSelectedOrder(order)}>
+                                <Eye className="h-4 w-4 mr-1" />
+                              </Button>
+                              
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogTitle>Order Details</DialogTitle>
+                              {selectedOrder && (
+                                <div className="space-y-2">
+                                  <img
+                                    src={selectedOrder.productImage}
+                                    alt="product"
+                                    className="w-full h-48 object-cover rounded-md"
+                                  />
+                                  <p><strong>Order ID:</strong> {selectedOrder.id}</p>
+                                  <p><strong>Product:</strong> {selectedOrder.product}</p>
+                                  <p><strong>Quantity:</strong> {selectedOrder.quantity}</p>
+                                  <p><strong>Price/Unit:</strong> {selectedOrder.requestedPrice}</p>
+                                  <p><strong>Total:</strong> {selectedOrder.totalAmount}</p>
+                                  <p><strong>Farmer:</strong> {selectedOrder.farmer}</p>
+                                  <p><strong>Status:</strong> {selectedOrder.status}</p>
+                                  <p><strong>Request Date:</strong> {selectedOrder.requestDate}</p>
+                                </div>
+                              )}
+                            </DialogContent>
+                          </Dialog>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                               <Button variant="ghost" size="sm" onClick={() => handleDelete(order.id)}>
+                            <Trash className="h-4 w-4 text-destructive"/>
                           </Button>
-
-                          <Button variant="destructive" size="sm">
-                            <Trash className="h-4 w-4 mr-1" />
-                          </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Delete</TooltipContent>
+                          </Tooltip>
                         </div>
                       </TableCell>
                     </TableRow>
