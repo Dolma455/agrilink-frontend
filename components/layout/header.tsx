@@ -142,7 +142,9 @@ export function Header() {
             </ScrollArea>
             <div className="p-3 border-t">
               <Button variant="outline" className="w-full" size="sm">
-                View All Notifications
+                <Link href="/vendor/notifications">
+                  View All Notifications
+                </Link>
               </Button>
             </div>
           </PopoverContent>
@@ -169,8 +171,6 @@ export function Header() {
             <DropdownMenuItem asChild>
             <Link href="/farmer/profile">Profile</Link>
             </DropdownMenuItem>
-            <DropdownMenuItem>Settings</DropdownMenuItem>
-            <DropdownMenuItem>Support</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
             <Link href="/login">
