@@ -1,0 +1,409 @@
+"use client"
+
+import { useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
+import {
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  ReferenceLine,
+} from "recharts"
+import { TrendingUp, Calendar, DollarSign, ShoppingCart, Filter } from "lucide-react"
+
+// 6 months before and 6 months after current date
+const analyticsData = {
+  costs: [
+    { period: "Jul 2023", actual: 25500, predicted: null, type: "past" },
+    { period: "Aug 2023", actual: 28200, predicted: null, type: "past" },
+    { period: "Sep 2023", actual: 31800, predicted: null, type: "past" },
+    { period: "Oct 2023", actual: 35600, predicted: null, type: "past" },
+    { period: "Nov 2023", actual: 39800, predicted: null, type: "past" },
+    { period: "Dec 2023", actual: 44200, predicted: null, type: "past" },
+    { period: "Jan 2024", actual: 48900, predicted: 47800, type: "present" },
+    { period: "Feb 2024", actual: null, predicted: 53200, type: "future" },
+    { period: "Mar 2024", actual: null, predicted: 58100, type: "future" },
+    { period: "Apr 2024", actual: null, predicted: 63500, type: "future" },
+    { period: "May 2024", actual: null, predicted: 69200, type: "future" },
+    { period: "Jun 2024", actual: null, predicted: 75400, type: "future" },
+    { period: "Jul 2024", actual: null, predicted: 82100, type: "future" },
+  ],
+  demand: [
+    { period: "Jul 2023", actual: 380, predicted: null, type: "past" },
+    { period: "Aug 2023", actual: 420, predicted: null, type: "past" },
+    { period: "Sep 2023", actual: 480, predicted: null, type: "past" },
+    { period: "Oct 2023", actual: 540, predicted: null, type: "past" },
+    { period: "Nov 2023", actual: 600, predicted: null, type: "past" },
+    { period: "Dec 2023", actual: 660, predicted: null, type: "past" },
+    { period: "Jan 2024", actual: 720, predicted: 710, type: "present" },
+    { period: "Feb 2024", actual: null, predicted: 780, type: "future" },
+    { period: "Mar 2024", actual: null, predicted: 840, type: "future" },
+    { period: "Apr 2024", actual: null, predicted: 900, type: "future" },
+    { period: "May 2024", actual: null, predicted: 960, type: "future" },
+    { period: "Jun 2024", actual: null, predicted: 1020, type: "future" },
+    { period: "Jul 2024", actual: null, predicted: 1080, type: "future" },
+  ],
+}
+
+// Product-specific price data
+const productPriceData = {
+  tomatoes: [
+    { period: "Jul 2023", actual: 35, predicted: null, type: "past" },
+    { period: "Aug 2023", actual: 38, predicted: null, type: "past" },
+    { period: "Sep 2023", actual: 41, predicted: null, type: "past" },
+    { period: "Oct 2023", actual: 45, predicted: null, type: "past" },
+    { period: "Nov 2023", actual: 48, predicted: null, type: "past" },
+    { period: "Dec 2023", actual: 51, predicted: null, type: "past" },
+    { period: "Jan 2024", actual: 55, predicted: 54, type: "present" },
+    { period: "Feb 2024", actual: null, predicted: 58, type: "future" },
+    { period: "Mar 2024", actual: null, predicted: 62, type: "future" },
+    { period: "Apr 2024", actual: null, predicted: 66, type: "future" },
+    { period: "May 2024", actual: null, predicted: 70, type: "future" },
+    { period: "Jun 2024", actual: null, predicted: 74, type: "future" },
+    { period: "Jul 2024", actual: null, predicted: 78, type: "future" },
+  ],
+  onions: [
+    { period: "Jul 2023", actual: 28, predicted: null, type: "past" },
+    { period: "Aug 2023", actual: 30, predicted: null, type: "past" },
+    { period: "Sep 2023", actual: 33, predicted: null, type: "past" },
+    { period: "Oct 2023", actual: 35, predicted: null, type: "past" },
+    { period: "Nov 2023", actual: 38, predicted: null, type: "past" },
+    { period: "Dec 2023", actual: 41, predicted: null, type: "past" },
+    { period: "Jan 2024", actual: 44, predicted: 43, type: "present" },
+    { period: "Feb 2024", actual: null, predicted: 47, type: "future" },
+    { period: "Mar 2024", actual: null, predicted: 50, type: "future" },
+    { period: "Apr 2024", actual: null, predicted: 53, type: "future" },
+    { period: "May 2024", actual: null, predicted: 56, type: "future" },
+    { period: "Jun 2024", actual: null, predicted: 59, type: "future" },
+    { period: "Jul 2024", actual: null, predicted: 62, type: "future" },
+  ],
+  potatoes: [
+    { period: "Jul 2023", actual: 25, predicted: null, type: "past" },
+    { period: "Aug 2023", actual: 27, predicted: null, type: "past" },
+    { period: "Sep 2023", actual: 29, predicted: null, type: "past" },
+    { period: "Oct 2023", actual: 31, predicted: null, type: "past" },
+    { period: "Nov 2023", actual: 33, predicted: null, type: "past" },
+    { period: "Dec 2023", actual: 35, predicted: null, type: "past" },
+    { period: "Jan 2024", actual: 38, predicted: 37, type: "present" },
+    { period: "Feb 2024", actual: null, predicted: 40, type: "future" },
+    { period: "Mar 2024", actual: null, predicted: 43, type: "future" },
+    { period: "Apr 2024", actual: null, predicted: 46, type: "future" },
+    { period: "May 2024", actual: null, predicted: 49, type: "future" },
+    { period: "Jun 2024", actual: null, predicted: 52, type: "future" },
+    { period: "Jul 2024", actual: null, predicted: 55, type: "future" },
+  ],
+  carrots: [
+    { period: "Jul 2023", actual: 33, predicted: null, type: "past" },
+    { period: "Aug 2023", actual: 36, predicted: null, type: "past" },
+    { period: "Sep 2023", actual: 38, predicted: null, type: "past" },
+    { period: "Oct 2023", actual: 41, predicted: null, type: "past" },
+    { period: "Nov 2023", actual: 43, predicted: null, type: "past" },
+    { period: "Dec 2023", actual: 45, predicted: null, type: "past" },
+    { period: "Jan 2024", actual: 48, predicted: 47, type: "present" },
+    { period: "Feb 2024", actual: null, predicted: 50, type: "future" },
+    { period: "Mar 2024", actual: null, predicted: 53, type: "future" },
+    { period: "Apr 2024", actual: null, predicted: 56, type: "future" },
+    { period: "May 2024", actual: null, predicted: 59, type: "future" },
+    { period: "Jun 2024", actual: null, predicted: 62, type: "future" },
+    { period: "Jul 2024", actual: null, predicted: 65, type: "future" },
+  ],
+}
+
+export default function VendorReports() {
+  const [selectedProduct, setSelectedProduct] = useState("tomatoes")
+  const currentPriceData = productPriceData[selectedProduct as keyof typeof productPriceData]
+
+  const products = [
+    { value: "tomatoes", label: "Tomatoes" },
+    { value: "onions", label: "Onions" },
+    { value: "potatoes", label: "Potatoes" },
+    { value: "carrots", label: "Carrots" },
+  ]
+
+  const getCurrentPrice = () => {
+    const currentData = currentPriceData.find((item) => item.type === "present")
+    return currentData?.actual || 0
+  }
+
+  const getNextMonthPrice = () => {
+    const futureData = currentPriceData.find((item) => item.type === "future")
+    return futureData?.predicted || 0
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="p-6 space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Vendor Analytics Dashboard</h1>
+            <p className="text-gray-600">6 months historical data and 6 months future predictions</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-gray-500" />
+            <span className="text-sm font-medium text-gray-700">Current: January 2024</span>
+          </div>
+        </div>
+
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="border-l-4 border-l-orange-500">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                <DollarSign className="h-4 w-4 text-orange-600" />
+                Cost Increase Forecast
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <div className="text-2xl font-bold text-orange-600">+68%</div>
+                <p className="text-sm text-gray-600">Expected cost increase over next 6 months</p>
+                <Badge className="bg-red-100 text-red-800">
+                  <TrendingUp className="h-3 w-3 mr-1" />
+                  Rising Procurement Costs
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-l-blue-500">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-blue-600" />
+                Average Price Increase
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <div className="text-2xl font-bold text-blue-600">+42%</div>
+                <p className="text-sm text-gray-600">Market price rise over 6 months</p>
+                <Badge className="bg-blue-100 text-blue-800">
+                  <TrendingUp className="h-3 w-3 mr-1" />
+                  Market Inflation
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-l-purple-500">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                <ShoppingCart className="h-4 w-4 text-purple-600" />
+                Demand Growth
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <div className="text-2xl font-bold text-purple-600">+50%</div>
+                <p className="text-sm text-gray-600">Market demand increase forecast</p>
+                <Badge className="bg-purple-100 text-purple-800">
+                  <TrendingUp className="h-3 w-3 mr-1" />
+                  Growing Market
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Cost Trends Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-orange-600" />
+              Procurement Cost Trends (6 Months Past + 6 Months Future)
+            </CardTitle>
+            <p className="text-sm text-gray-600">Historical actual costs and future predictions (Rs.)</p>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={400}>
+              <LineChart data={analyticsData.costs}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="period" />
+                <YAxis />
+                <Tooltip
+                  formatter={(value, name) => [
+                    `Rs. ${value?.toLocaleString()}`,
+                    name === "actual" ? "Actual Cost" : "Predicted Cost",
+                  ]}
+                />
+                <ReferenceLine x="Jan 2024" stroke="#ef4444" strokeDasharray="2 2" label="Current Month" />
+                <Line
+                  type="monotone"
+                  dataKey="actual"
+                  stroke="#f97316"
+                  strokeWidth={3}
+                  name="actual"
+                  dot={{ fill: "#f97316", strokeWidth: 2, r: 5 }}
+                  connectNulls={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="predicted"
+                  stroke="#3b82f6"
+                  strokeWidth={3}
+                  strokeDasharray="8 8"
+                  name="predicted"
+                  dot={{ fill: "#3b82f6", strokeWidth: 2, r: 5 }}
+                  connectNulls={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+            <div className="mt-4 grid grid-cols-3 gap-4">
+              <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                <p className="text-sm text-orange-700">
+                  <strong>Current Month:</strong> Rs. 48,900
+                </p>
+              </div>
+              <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-sm text-blue-700">
+                  <strong>Next Month:</strong> Rs. 53,200
+                </p>
+              </div>
+              <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+                <p className="text-sm text-red-700">
+                  <strong>6 Months Later:</strong> Rs. 82,100
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Price Predictions Chart */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-blue-600" />
+                  Market Price Predictions by Product
+                </CardTitle>
+                <p className="text-sm text-gray-600">Historical and predicted market prices (Rs./kg)</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-gray-500" />
+                <Select value={selectedProduct} onValueChange={setSelectedProduct}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {products.map((product) => (
+                      <SelectItem key={product.value} value={product.value}>
+                        {product.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={400}>
+              <LineChart data={currentPriceData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="period" />
+                <YAxis />
+                <Tooltip
+                  formatter={(value, name) => [
+                    `Rs. ${value}/kg`,
+                    name === "actual" ? "Actual Price" : "Predicted Price",
+                  ]}
+                />
+                <ReferenceLine x="Jan 2024" stroke="#ef4444" strokeDasharray="2 2" label="Current Month" />
+                <Line
+                  type="monotone"
+                  dataKey="actual"
+                  stroke="#f97316"
+                  strokeWidth={3}
+                  name="actual"
+                  dot={{ fill: "#f97316", strokeWidth: 2, r: 5 }}
+                  connectNulls={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="predicted"
+                  stroke="#3b82f6"
+                  strokeWidth={3}
+                  strokeDasharray="8 8"
+                  name="predicted"
+                  dot={{ fill: "#3b82f6", strokeWidth: 2, r: 5 }}
+                  connectNulls={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+            <div className="mt-4 grid grid-cols-3 gap-4">
+              <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                <p className="text-sm text-orange-700">
+                  <strong>Current Price:</strong> Rs. {getCurrentPrice()}/kg
+                </p>
+              </div>
+              <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-sm text-blue-700">
+                  <strong>Next Month:</strong> Rs. {getNextMonthPrice()}/kg
+                </p>
+              </div>
+              <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+                <p className="text-sm text-red-700">
+                  <strong>Price Increase:</strong> +
+                  {(((getNextMonthPrice() - getCurrentPrice()) / getCurrentPrice()) * 100).toFixed(1)}%
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Demand Predictions Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5 text-purple-600" />
+              Market Demand Trends (6 Months Past + 6 Months Future)
+            </CardTitle>
+            <p className="text-sm text-gray-600">Historical and predicted market demand (kg)</p>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={400}>
+              <BarChart data={analyticsData.demand}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="period" />
+                <YAxis />
+                <Tooltip
+                  formatter={(value, name) => [
+                    `${value?.toLocaleString()} kg`,
+                    name === "actual" ? "Actual Demand" : "Predicted Demand",
+                  ]}
+                />
+                <ReferenceLine x="Jan 2024" stroke="#ef4444" strokeDasharray="2 2" label="Current Month" />
+                <Bar dataKey="actual" fill="#f97316" name="actual" />
+                <Bar dataKey="predicted" fill="#fb923c" name="predicted" opacity={0.8} />
+              </BarChart>
+            </ResponsiveContainer>
+            <div className="mt-4 grid grid-cols-3 gap-4">
+              <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                <p className="text-sm text-orange-700">
+                  <strong>Current Demand:</strong> 720 kg
+                </p>
+              </div>
+              <div className="p-3 bg-orange-100 rounded-lg border border-orange-300">
+                <p className="text-sm text-orange-700">
+                  <strong>Next Month:</strong> 780 kg
+                </p>
+              </div>
+              <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+                <p className="text-sm text-red-700">
+                  <strong>6 Months Later:</strong> 1,080 kg
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
