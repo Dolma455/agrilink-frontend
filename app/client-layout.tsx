@@ -4,6 +4,7 @@ import type React from "react"
 import { usePathname } from "next/navigation"
 import { MainLayout } from "@/components/layout/main-layout"
 import { VendorLayout } from "@/components/layout/vendor-layout"
+import { AdminLayout } from "@/components/layout/admin-layout"
 
 export default function ClientLayout({
   children,
@@ -14,6 +15,7 @@ export default function ClientLayout({
   const isAuthPage = pathname === "/login" || pathname === "/signup"
   const isVendorPage = pathname.startsWith("/vendor")
   const isFarmerPage = pathname.startsWith("/farmer")
+  const isAdminPage = pathname.startsWith("/admin")
   if (isAuthPage) {
     return children
   }
@@ -24,6 +26,9 @@ export default function ClientLayout({
 
   if (isFarmerPage) {
     return <MainLayout>{children}</MainLayout>
+  }
+  if (isAdminPage) {
+    return <AdminLayout>{children}</AdminLayout>
   }
 
   return children
