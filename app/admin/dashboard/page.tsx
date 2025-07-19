@@ -1,6 +1,6 @@
 "use client"
 
-export default function FarmerDashboard() {
+export default function AdminDashboard() {
 
   return (
     <div className="p-6 space-y-6">
