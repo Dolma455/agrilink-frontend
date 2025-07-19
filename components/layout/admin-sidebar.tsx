@@ -16,12 +16,12 @@ const navigation = [
   },
   {
     name: "Product Management",
-    href: "/admin/products",
+    href: "/admin/product-management",
     icon: Truck,
   },
   {
     name: "User Management",
-    href: "/admin/users",
+    href: "/admin/user-management",
     icon: User,
   },
 
@@ -78,7 +78,9 @@ export function AdminSidebar() {
           })}
         </nav>
       </ScrollArea>
+
       <Separator className="bg-gray-700" />
+
       {/* Bottom section */}
       <div className="p-3 space-y-2">
         <Link href="/login">
