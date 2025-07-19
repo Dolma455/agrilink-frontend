@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Separator } from "@/components/ui/separator"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Eye, EyeOff, Loader2, Sprout, Users, Truck, BarChart3, ShoppingCart } from "lucide-react"
+import { Eye, EyeOff, Loader2, Sprout, Users, Truck, BarChart3, ShoppingCart, User } from "lucide-react"
 import Link from "next/link"
 
 export default function LoginPage() {
@@ -40,12 +40,15 @@ export default function LoginPage() {
       // Redirect based on user type
       if (formData.userType === "farmer") {
         router.push("/farmer/dashboard")
-      } else {
+      }
+      else if(formData.userType === "admin") {
+        router.push("/admin/dashboard")
+      }
+      else {
         router.push("/vendor/dashboard")
       }
     }, 1500)
   }
-
   const handleChange = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
@@ -123,6 +126,13 @@ export default function LoginPage() {
                       <Label htmlFor="vendor" className="flex items-center gap-2 cursor-pointer">
                         <ShoppingCart className="h-4 w-4 text-orange-600" />
                         Vendor
+                      </Label>
+                    </div>
+                      <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="admin" id="admin" />
+                      <Label htmlFor="admin" className="flex items-center gap-2 cursor-pointer">
+                        <User className="h-4 w-4 text-green-600" />
+                        Admin
                       </Label>
                     </div>
                   </RadioGroup>
