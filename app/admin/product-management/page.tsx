@@ -25,11 +25,21 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import {
   Edit,
   Filter,
   Plus,
   Search,
   Trash2,
+  ImagePlus,
+  X,
+  Loader2,
 } from "lucide-react"
 import {
   Tooltip,
@@ -37,6 +47,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { Label } from "@/components/ui/label"
 
 interface Product {
   id: string
@@ -55,7 +66,6 @@ const categoryOptions = [
 ]
 
 export default function ProductDashboard() {
-  // Products state for dynamic updates
   const [products, setProducts] = useState<Product[]>([
     { id: "PRD001", name: "Tomatoes", category: "Vegetables", image: "/assets/images/tomatoes.jpg" },
     { id: "PRD002", name: "Potatoes", category: "Dairy", image: "/assets/images/potatoes.jpg" },
@@ -66,9 +76,14 @@ export default function ProductDashboard() {
 
   const [searchTerm, setSearchTerm] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
-
-  // Form state
-  const [form, setForm] = useState<Product | null>(null)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const [formData, setFormData] = useState({ name: "", category: "", image: "" })
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imageUrl, setImageUrl] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
 
   // Filtered products based on search and category
   const filteredProducts = products.filter((product) => {
@@ -78,73 +93,125 @@ export default function ProductDashboard() {
   })
 
   // Handle form field changes
-  function handleFormChange(field: keyof Product, value: string) {
-    if (!form) return
-    setForm({ ...form, [field]: value })
+  function handleFormChange(field: keyof typeof formData, value: string) {
+    setFormData((prev) => ({ ...prev, [field]: value }))
+    setError("") // Clear error on input change
+  }
+
+  // Handle image upload
+  function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = () => {
+        setImagePreview(reader.result as string)
+        setImageUrl("") // Clear image URL if file used
+        handleFormChange("image", reader.result as string)
+      }
+      reader.readAsDataURL(file)
+      setImageFile(file)
+    }
+  }
+
+  // Handle image URL change
+  function handleImageUrlChange(url: string) {
+    setImageUrl(url)
+    setImagePreview(url)
+    setImageFile(null) // Clear file if URL used
+    handleFormChange("image", url)
+  }
+
+  // Remove image
+  function removeImage() {
+    setImagePreview(null)
+    setImageUrl("")
+    setImageFile(null)
+    handleFormChange("image", "")
   }
 
   // Handle Delete action
   function handleDelete(id: string) {
     if (confirm("Are you sure you want to delete this product?")) {
       setProducts(products.filter((p) => p.id !== id))
-      if (form?.id === id) {
-        setForm(null) // Clear form if deleting the edited product
+      if (editingProduct?.id === id) {
+        setIsDialogOpen(false)
+        setEditingProduct(null)
       }
     }
   }
 
   // Handle Edit action
   function handleEdit(product: Product) {
-    setForm(product)
+    setEditingProduct(product)
+    setFormData({
+      name: product.name,
+      category: product.category,
+      image: product.image,
+    })
+    setImagePreview(product.image)
+    setImageUrl(product.image)
+    setImageFile(null)
+    setIsDialogOpen(true)
   }
 
   // Handle Add new product
   function handleAddNew() {
-    setForm({ id: "", name: "", category: "", image: "" })
+    setEditingProduct(null)
+    setFormData({ name: "", category: "", image: "" })
+    setImagePreview(null)
+    setImageUrl("")
+    setImageFile(null)
+    setIsDialogOpen(true)
   }
 
-  // Handle Save form (add or update)
+  // Handle Save (add or update)
   function handleSave(e: React.FormEvent) {
     e.preventDefault()
-    if (!form) return
 
-    // Simple validation
-    if (!form.name.trim() || !form.category.trim() || !form.image.trim()) {
-      alert("Please fill all fields.")
+    // Validation
+    if (!formData.name.trim() || !formData.category.trim() || !formData.image.trim()) {
+      setError("Please fill in all fields including image.")
       return
     }
 
-    if (form.id) {
-      // Update existing
-      setProducts((prev) =>
-        prev.map((p) => (p.id === form.id ? form : p))
-      )
-    } else {
-      // Add new
-      const newProduct = {
-        ...form,
-        id: `PRD${Math.floor(1000 + Math.random() * 9000)}`,
+    setIsLoading(true)
+
+    // Simulate API call
+    setTimeout(() => {
+      const finalProduct: Product = {
+        ...formData,
+        id: editingProduct ? editingProduct.id : `PRD${Math.floor(1000 + Math.random() * 9000)}`,
       }
-      setProducts((prev) => [...prev, newProduct])
-    }
 
-    alert("Product saved successfully!")
-    setForm(null)
-  }
+      if (editingProduct) {
+        // Update existing product
+        setProducts((prev) => prev.map((p) => (p.id === editingProduct.id ? finalProduct : p)))
+        alert("Product updated successfully!")
+      } else {
+        // Add new product
+        setProducts((prev) => [...prev, finalProduct])
+        alert("Product added successfully!")
+      }
 
-  // Handle Cancel form
-  function handleCancel() {
-    setForm(null)
+      setIsLoading(false)
+      setIsDialogOpen(false)
+      setEditingProduct(null)
+      setFormData({ name: "", category: "", image: "" })
+      setImagePreview(null)
+      setImageUrl("")
+      setImageFile(null)
+      setError("")
+    }, 1500)
   }
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen max-h-screen overflow-y-auto bg-gray-50/50 p-4 md:p-6 lg:p-8">
+      <div className="min-h-screen bg-gray-50/50 p-4 md:p-6 lg:p-8">
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Products</h1>
-              <p className="text-muted-foreground">Admin view: Product name, category, image, actions</p>
+              <p className="text-muted-foreground">Admin view: Manage product name, category, and image</p>
             </div>
             <Button
               className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
@@ -207,84 +274,6 @@ export default function ProductDashboard() {
               </div>
             </CardContent>
           </Card>
-
-          {/* Editable Form */}
-          {form && (
-            <Card>
-              <CardHeader>
-                <CardTitle>{form.id ? "Edit Product" : "Add New Product"}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSave} className="space-y-4">
-                  <div>
-                    <label className="block mb-1 font-medium">Product Name</label>
-                    <Input
-                      value={form.name}
-                      onChange={(e) => handleFormChange("name", e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-1 font-medium">Category</label>
-                    <Select
-                      value={form.category}
-                      onValueChange={(val) => handleFormChange("category", val)}
-                      required
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categoryOptions.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Image preview and upload */}
-                  <div>
-                    <label className="block mb-1 font-medium">Current Image</label>
-                    {form.image ? (
-                      <img
-                        src={form.image}
-                        alt={form.name}
-                        className="h-20 w-20 rounded object-cover mb-2 border"
-                      />
-                    ) : (
-                      <p>No image available</p>
-                    )}
-                    <p className="mb-2 text-sm text-gray-600">Upload new image to update</p>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0]
-                        if (file) {
-                          const reader = new FileReader()
-                          reader.onload = () => {
-                            handleFormChange("image", reader.result as string)
-                          }
-                          reader.readAsDataURL(file)
-                        }
-                      }}
-                    />
-                  </div>
-
-                  <div className="flex justify-end gap-2 pt-4">
-                    <Button variant="outline" type="button" onClick={handleCancel}>
-                      Cancel
-                    </Button>
-                    <Button type="submit" className="bg-green-600 hover:bg-green-700 text-white">
-                      Save
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-          )}
 
           {/* Product Table */}
           <Card>
@@ -358,6 +347,117 @@ export default function ProductDashboard() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Add/Edit Product Dialog */}
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>{editingProduct ? "Edit Product" : "Add New Product"}</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSave} className="space-y-4">
+                {/* Product Name */}
+                <div className="space-y-2">
+                  <Label>Product Name *</Label>
+                  <Input
+                    placeholder="Enter product name"
+                    value={formData.name}
+                    onChange={(e) => handleFormChange("name", e.target.value)}
+                    required
+                  />
+                </div>
+
+                {/* Image Upload or URL */}
+                <div className="space-y-2">
+                  <Label>Image (Upload or URL) *</Label>
+                  <div className="flex items-center gap-2">
+                    <label
+                      htmlFor="imageUpload"
+                      className="flex items-center justify-center border border-dashed border-gray-400 rounded-md p-2 cursor-pointer hover:bg-gray-100"
+                    >
+                      <ImagePlus className="h-5 w-5 mr-2" />
+                      Choose Image
+                    </label>
+                    <input
+                      id="imageUpload"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                    />
+                  </div>
+                  <Input
+                    type="text"
+                    placeholder="Or paste image URL"
+                    value={imageUrl}
+                    onChange={(e) => handleImageUrlChange(e.target.value)}
+                  />
+                  {imagePreview && (
+                    <div className="relative mt-2 h-32 w-32 overflow-hidden rounded-md border">
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="h-full w-full object-cover"
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="absolute right-1 top-1 h-6 w-6"
+                        onClick={removeImage}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Category */}
+                <div className="space-y-2">
+                  <Label>Category *</Label>
+                  <Input
+                    placeholder="Enter category"
+                    value={formData.category}
+                    onChange={(e) => handleFormChange("category", e.target.value)}
+                    required
+                  />
+                  <Select
+                    onValueChange={(val) => handleFormChange("category", val)}
+                    value={categoryOptions.some(opt => opt.value === formData.category) ? formData.category : ""}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Or select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categoryOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {error && <p className="text-red-500 text-sm">{error}</p>}
+
+                <DialogFooter>
+                  <Button
+                    type="submit"
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {editingProduct ? "Updating..." : "Adding..."}
+                      </>
+                    ) : (
+                      editingProduct ? "Update Product" : "Add Product"
+                    )}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     </TooltipProvider>
