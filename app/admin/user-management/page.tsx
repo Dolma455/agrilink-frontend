@@ -33,7 +33,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import Link from "next/link"
 
 interface User {
   id: string
@@ -75,7 +74,7 @@ export default function UserDashboard() {
 
   const [activeTab, setActiveTab] = useState<"farmer" | "vendor">("farmer")
   const [searchTerm, setSearchTerm] = useState("")
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [formData, setFormData] = useState({
     userType: "farmer",
@@ -105,6 +104,10 @@ export default function UserDashboard() {
   function handleDelete(id: string) {
     if (confirm("Are you sure you want to delete this user?")) {
       setUsers(users.filter((u) => u.id !== id))
+      if (editingUser?.id === id) {
+        setIsDialogOpen(false)
+        setEditingUser(null)
+      }
     }
   }
 
@@ -118,10 +121,30 @@ export default function UserDashboard() {
       phone: user.phone,
       businessName: user.businessName,
       location: user.location,
-      password: "", // Password fields are initially empty for security
+      password: "",
       confirmPassword: "",
     })
-    setIsEditDialogOpen(true)
+    setShowPassword(false)
+    setShowConfirmPassword(false)
+    setIsDialogOpen(true)
+  }
+
+  function handleAddNew() {
+    setEditingUser(null)
+    setFormData({
+      userType: "farmer",
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      businessName: "",
+      location: "",
+      password: "",
+      confirmPassword: "",
+    })
+    setShowPassword(false)
+    setShowConfirmPassword(false)
+    setIsDialogOpen(true)
   }
 
   const handleChange = (field: string, value: string) => {
@@ -129,22 +152,40 @@ export default function UserDashboard() {
     setError("") // Clear error on input change
   }
 
-  const handleUpdate = async (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!editingUser) return
 
-    // Validate password if provided
-    if (formData.password && formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match")
+    // Validate required fields
+    if (
+      !formData.firstName.trim() ||
+      !formData.lastName.trim() ||
+      !formData.email.trim() ||
+      !formData.phone.trim() ||
+      !formData.businessName.trim() ||
+      !formData.location.trim()
+    ) {
+      setError("Please fill in all required fields")
       return
+    }
+
+    // Validate password for add operation
+    if (!editingUser) {
+      if (!formData.password || !formData.confirmPassword) {
+        setError("Password and Confirm Password are required for new users")
+        return
+      }
+      if (formData.password !== formData.confirmPassword) {
+        setError("Passwords do not match")
+        return
+      }
     }
 
     setIsLoading(true)
 
-    // Simulate API call to update user
+    // Simulate API call
     setTimeout(() => {
-      const updatedUser: User = {
-        ...editingUser,
+      const newUser: User = {
+        id: editingUser ? editingUser.id : `USR${Math.floor(1000 + Math.random() * 9000)}`,
         userType: formData.userType as "farmer" | "vendor",
         firstName: formData.firstName,
         lastName: formData.lastName,
@@ -152,14 +193,36 @@ export default function UserDashboard() {
         phone: formData.phone,
         businessName: formData.businessName,
         location: formData.location,
-        joinedDate: editingUser.joinedDate,
+        joinedDate: editingUser ? editingUser.joinedDate : new Date().toISOString().split('T')[0],
       }
 
-      setUsers(users.map((u) => (u.id === editingUser.id ? updatedUser : u)))
+      if (editingUser) {
+        // Update existing user
+        setUsers(users.map((u) => (u.id === editingUser.id ? newUser : u)))
+        alert("User updated successfully")
+      } else {
+        // Add new user
+        setUsers([...users, newUser])
+        alert("User added successfully")
+      }
+
       setIsLoading(false)
-      setIsEditDialogOpen(false)
+      setIsDialogOpen(false)
+      setEditingUser(null)
+      setFormData({
+        userType: "farmer",
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        businessName: "",
+        location: "",
+        password: "",
+        confirmPassword: "",
+      })
+      setShowPassword(false)
+      setShowConfirmPassword(false)
       setError("")
-      alert("User updated successfully")
     }, 1500)
   }
 
@@ -175,11 +238,12 @@ export default function UserDashboard() {
                 Admin view: Manage farmers and vendors
               </p>
             </div>
-            <Button asChild className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white">
-              <Link href="/admin/user-management/add">
-                <Plus className="h-4 w-4" />
-                Add User
-              </Link>
+            <Button
+              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
+              onClick={handleAddNew}
+            >
+              <Plus className="h-4 w-4" />
+              Add User
             </Button>
           </div>
 
@@ -205,12 +269,12 @@ export default function UserDashboard() {
             <CardContent>
               <div className="relative max-w-sm pt-4">
                 <Search className="absolute left-3 top-7 h-4 w-4 text-muted-foreground" />
-                <input
+                <Input
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 border rounded w-full py-2 px-3"
                   placeholder="Search by name, email or phone..."
+                  className="pl-10"
                 />
               </div>
             </CardContent>
@@ -294,126 +358,179 @@ export default function UserDashboard() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Add/Edit User Dialog */}
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>{editingUser ? "Edit User" : "Add New User"}</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSave} className="space-y-4">
+                {/* User Type */}
+                <div className="space-y-2">
+                  <Label>User Type *</Label>
+                  <RadioGroup
+                    value={formData.userType}
+                    onValueChange={(value) => handleChange("userType", value)}
+                    className="grid grid-cols-2 gap-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="farmer" id="farmer" />
+                      <Label htmlFor="farmer" className="flex items-center gap-2 cursor-pointer">
+                        <Sprout className="h-4 w-4 text-green-600" />
+                        Farmer
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="vendor" id="vendor" />
+                      <Label htmlFor="vendor" className="flex items-center gap-2 cursor-pointer">
+                        <ShoppingCart className="h-4 w-4 text-orange-600" />
+                        Vendor
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                {/* Personal Information */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">First Name *</Label>
+                    <Input
+                      id="firstName"
+                      value={formData.firstName}
+                      onChange={(e) => handleChange("firstName", e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName">Last Name *</Label>
+                    <Input
+                      id="lastName"
+                      value={formData.lastName}
+                      onChange={(e) => handleChange("lastName", e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email Address *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => handleChange("email", e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone Number *</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => handleChange("phone", e.target.value)}
+                    required
+                  />
+                </div>
+
+                {/* Business Information */}
+                <div className="space-y-2">
+                  <Label htmlFor="businessName">{formData.userType === "farmer" ? "Farm Name *" : "Business Name *"}</Label>
+                  <Input
+                    id="businessName"
+                    value={formData.businessName}
+                    onChange={(e) => handleChange("businessName", e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="location">Location *</Label>
+                  <Input
+                    id="location"
+                    value={formData.location}
+                    onChange={(e) => handleChange("location", e.target.value)}
+                    required
+                  />
+                </div>
+
+                {/* Password Fields (only for add) */}
+                {!editingUser && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="password">Password *</Label>
+                      <div className="relative">
+                        <Input
+                          id="password"
+                          type={showPassword ? "text" : "password"}
+                          placeholder="Enter password"
+                          value={formData.password}
+                          onChange={(e) => handleChange("password", e.target.value)}
+                          className="pr-10"
+                          required
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-0 top-0 h-full w-10"
+                          onClick={() => setShowPassword(!showPassword)}
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="confirmPassword">Confirm Password *</Label>
+                      <div className="relative">
+                        <Input
+                          id="confirmPassword"
+                          type={showConfirmPassword ? "text" : "password"}
+                          placeholder="Confirm password"
+                          value={formData.confirmPassword}
+                          onChange={(e) => handleChange("confirmPassword", e.target.value)}
+                          className="pr-10"
+                          required
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-0 top-0 h-full w-10"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        >
+                          {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {error && <p className="text-red-500 text-sm">{error}</p>}
+
+                <DialogFooter>
+                  <Button
+                    type="submit"
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {editingUser ? "Updating..." : "Adding..."}
+                      </>
+                    ) : (
+                      editingUser ? "Update User" : "Add User"
+                    )}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
-
-        {/* Edit User Dialog */}
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Edit User</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleUpdate} className="space-y-4">
-              {/* User Type */}
-              <div className="space-y-2">
-                <Label>User Type</Label>
-                <RadioGroup
-                  value={formData.userType}
-                  onValueChange={(value) => handleChange("userType", value)}
-                  className="grid grid-cols-2 gap-4"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="farmer" id="farmer" />
-                    <Label htmlFor="farmer" className="flex items-center gap-2 cursor-pointer">
-                      <Sprout className="h-4 w-4 text-green-600" />
-                      Farmer
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="vendor" id="vendor" />
-                    <Label htmlFor="vendor" className="flex items-center gap-2 cursor-pointer">
-                      <ShoppingCart className="h-4 w-4 text-orange-600" />
-                      Vendor
-                    </Label>
-                  </div>
-                </RadioGroup>
-              </div>
-
-              {/* Personal Information */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name</Label>
-                  <Input
-                    id="firstName"
-                    value={formData.firstName}
-                    onChange={(e) => handleChange("firstName", e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name</Label>
-                  <Input
-                    id="lastName"
-                    value={formData.lastName}
-                    onChange={(e) => handleChange("lastName", e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => handleChange("email", e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => handleChange("phone", e.target.value)}
-                  required
-                />
-              </div>
-
-              {/* Business Information */}
-              <div className="space-y-2">
-                <Label htmlFor="businessName">{formData.userType === "farmer" ? "Farm Name" : "Business Name"}</Label>
-                <Input
-                  id="businessName"
-                  value={formData.businessName}
-                  onChange={(e) => handleChange("businessName", e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="location">Location</Label>
-                <Input
-                  id="location"
-                  value={formData.location}
-                  onChange={(e) => handleChange("location", e.target.value)}
-                  required
-                />
-              </div>
-
-              {error && <p className="text-red-500 text-sm">{error}</p>}
-
-              <DialogFooter>
-                <Button
-                  type="submit"
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Updating...
-                    </>
-                  ) : (
-                    "Update User"
-                  )}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
       </div>
     </TooltipProvider>
   )
