@@ -1,10 +1,12 @@
 export interface UserProps {
     id: string;
-    firstName: string;
-    lastName: string;
+    fullName: string;
     email: string;
     phone: string;
     location: string;
     role: string;
+    businessName: string;
+    status: string;
+    profilePicture: File | null;
 
 }
