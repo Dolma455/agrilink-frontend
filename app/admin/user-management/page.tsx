@@ -33,6 +33,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { useFetchQuery } from "@/lib/fetch-api"
 
 interface User {
   id: string
@@ -47,6 +48,9 @@ interface User {
 }
 
 export default function UserDashboard() {
+
+  // api called
+
   const [users, setUsers] = useState<User[]>([
     {
       id: "USR001",
