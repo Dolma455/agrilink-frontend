@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
-import { Bell, Home, LogOut,ShoppingCart, Truck, User } from "lucide-react"
+import { Bell, Home, List, LogOut,ShoppingCart, Truck, User } from "lucide-react"
 
 const navigation = [
   {
@@ -29,6 +29,12 @@ const navigation = [
     name: "Unit Management",
     href: "/admin/unit-management",
     icon: ShoppingCart,
+  },
+
+  {
+    name: "Category Management",
+    href: "/admin/category-management",
+    icon: List,
   },
 
   {
