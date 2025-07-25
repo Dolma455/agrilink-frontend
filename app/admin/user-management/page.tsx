@@ -4,13 +4,11 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Search } from "lucide-react"
-import { Plus } from "lucide-react"
+import { Plus, Search } from "lucide-react"
 import { UserProps } from "./type"
 import UserTable from "./UserTable"
 import UserFormDialog from "./UserFormDialog"
-
-const BASE_URL = process.env.NEXT_PUBLIC_BASEURL || "https://api-agrilink.waterflowtechnology.net"
+import axiosInstance from "@/lib/axiosInstance"
 
 export default function Dashboard() {
   const [users, setUsers] = useState<UserProps[]>([])
@@ -22,24 +20,14 @@ export default function Dashboard() {
   const [editingUser, setEditingUser] = useState<UserProps | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
-  // Fetch users
+  // Fetch Users
   const fetchUsers = async () => {
     try {
       setUserLoading(true)
-      const response = await fetch(`${BASE_URL}/api/v1/user/all`, {
-        headers: { "Accept": "*/*" },
-      })
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`Failed to fetch users: ${errorText || response.statusText}`)
-      }
-      const data = await response.json()
-      setUsers(data.data || [])
+      const response = await axiosInstance.get("/api/v1/user/all")
+      setUsers(response.data.data || [])
     } catch (err: any) {
-      console.error("Fetch Users Error:", {
-        message: err.message,
-        status: err.status,
-      })
+      console.error("Fetch Users Error:", err)
       setUserError(err.message || "Failed to load users")
     } finally {
       setUserLoading(false)
@@ -50,31 +38,21 @@ export default function Dashboard() {
     fetchUsers()
   }, [])
 
-  // Filter users
+  // Filter users by role and search term
   const filteredUsers = users.filter(
-    (u: UserProps) =>
-      u.role === activeTab &&
-      (u.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        u.phone.includes(searchTerm))
+    (user) =>
+      user.role === activeTab &&
+      (user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.phone.includes(searchTerm))
   )
 
+  // Delete user
   async function handleDelete(id: string) {
     if (confirm("Are you sure you want to delete this user?")) {
       try {
         setIsLoading(true)
-        const response = await fetch(`${BASE_URL}/api/v1/user/${id}`, {
-          method: "DELETE",
-          headers: { "Accept": "*/*", "Content-Type": "application/json" },
-        })
-        if (!response.ok) {
-          const errorText = await response.text()
-          console.error("Delete Error:", {
-            status: response.status,
-            body: errorText,
-          })
-          throw new Error(`Failed to delete user: ${errorText || response.statusText}`)
-        }
+        await axiosInstance.delete(`/api/v1/user/${id}`)
         await fetchUsers()
         if (editingUser?.id === id) {
           setIsDialogOpen(false)
@@ -82,10 +60,7 @@ export default function Dashboard() {
         }
         alert("User deleted successfully")
       } catch (err: any) {
-        console.error("Delete Error:", {
-          message: err.message,
-          status: err.status,
-        })
+        console.error("Delete Error:", err)
         alert(err.message || "Failed to delete user. Please try again.")
       } finally {
         setIsLoading(false)
@@ -103,59 +78,41 @@ export default function Dashboard() {
     setIsDialogOpen(true)
   }
 
-  async function handleSave(formData: Partial<UserProps> & { password?: string; confirmPassword?: string; profilePicture?: File | null }) {
-    const formDataPayload = new FormData()
-    formDataPayload.append("FullName", formData.fullName!)
-    formDataPayload.append("Email", formData.email!)
-    formDataPayload.append("Phone", formData.phone!)
-    formDataPayload.append("BusinessName", formData.businessName!)
-    formDataPayload.append("Location", formData.location!)
-    formDataPayload.append("Role", formData.role!)
+  // Create / Update user
+  async function handleSave(formData: Partial<UserProps> & { password?: string; profilePicture?: File | null }) {
+    const payload = new FormData()
+    payload.append("FullName", formData.fullName!)
+    payload.append("Email", formData.email!)
+    payload.append("Phone", formData.phone!)
+    payload.append("BusinessName", formData.businessName!)
+    payload.append("Location", formData.location!)
+    payload.append("Role", formData.role!)
     if (formData.profilePicture) {
-      formDataPayload.append("ProfilePicture", formData.profilePicture)
+      payload.append("ProfilePicture", formData.profilePicture)
     }
 
     try {
       if (editingUser) {
-        const response = await fetch(`${BASE_URL}/api/v1/user/${editingUser.id}`, {
-          method: "PATCH",
-          headers: { "Accept": "*/*" },
-          body: formDataPayload,
+        // UPDATE
+        payload.append("Id", editingUser.id)
+        await axiosInstance.patch("/api/v1/user/update", payload, {
+          headers: { "Content-Type": "multipart/form-data" },
         })
-        if (!response.ok) {
-          const errorText = await response.text()
-          console.error("Update Error:", {
-            status: response.status,
-            body: errorText,
-          })
-          throw new Error(`Failed to update user: ${errorText || response.statusText}`)
-        }
       } else {
-        formDataPayload.append("Password", formData.password!)
-        const response = await fetch(`${BASE_URL}/api/v1/user/register`, {
-          method: "POST",
-          headers: { "Accept": "*/*" },
-          body: formDataPayload,
+        // CREATE
+        payload.append("Password", formData.password!)
+        await axiosInstance.post("/api/v1/user/register", payload, {
+          headers: { "Content-Type": "multipart/form-data" },
         })
-        if (!response.ok) {
-          const errorText = await response.text()
-          console.error("Add User Error:", {
-            status: response.status,
-            body: errorText,
-          })
-          throw new Error(`Failed to add user: ${errorText || response.statusText}`)
-        }
       }
+
       await fetchUsers()
       alert(editingUser ? "User updated successfully" : "User added successfully")
       setIsDialogOpen(false)
       setEditingUser(null)
     } catch (err: any) {
-      console.error(editingUser ? "Update Error" : "Add Error", {
-        message: err.message,
-        status: err.status,
-      })
-      throw err
+      console.error("Save User Error:", err)
+      alert(err.message || "Failed to save user")
     }
   }
 
@@ -169,9 +126,7 @@ export default function Dashboard() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
-            <p className="text-muted-foreground">
-              Admin view: Manage Farmers and Vendors
-            </p>
+            <p className="text-muted-foreground">Admin view: Manage Farmers and Vendors</p>
           </div>
           <Button
             className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
