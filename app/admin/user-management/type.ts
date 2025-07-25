@@ -10,3 +10,9 @@ export interface UserProps {
     profilePicture: File | null;
 
 }
+
+export interface UnitProps {
+  id: string;
+  name: string;
+  symbol: string;
+}

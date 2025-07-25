@@ -26,6 +26,12 @@ const navigation = [
   },
 
   {
+    name: "Unit Management",
+    href: "/admin/unit-management",
+    icon: ShoppingCart,
+  },
+
+  {
     name: "Notifications",
     href: "/admin/notifications",
     icon: Bell,
