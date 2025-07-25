@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Loader2, ShoppingCart, Sprout } from "lucide-react"
-import { UserProps } from "./type"
+import { UserProps } from "../../type"
 
 interface UserFormDialogProps {
   isOpen: boolean;

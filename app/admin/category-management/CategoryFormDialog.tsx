@@ -6,25 +6,25 @@ import { Dialog,DialogContent, DialogHeader, DialogTitle,
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Loader2 } from "lucide-react"
-import { UnitProps } from "../../type"
+import { CategoryProps} from "../../type"
 
-interface UnitsFormDialogProps {
+interface CategoryFormDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  editingUnit: UnitProps | null;
-  setEditingUnit: (unit: UnitProps | null) => void;
-  onSave: (formData: Partial<UnitProps>) => Promise<void>;
+  editingCategory: CategoryProps | null;
+  setEditingCategory: (unit: CategoryProps | null) => void;
+  onSave: (formData: Partial<CategoryProps>) => Promise<void>;
 }
 
-export default function UnitsFormDialog({ isOpen, setIsOpen, editingUnit, setEditingUnit, onSave }: UnitsFormDialogProps) {
-  const [formData, setFormData] = useState<Partial<UnitProps>>({
-    name: editingUnit?.name || "",
-    symbol: editingUnit?.symbol || "",
+export default function CategoriesFormDialog({ isOpen, setIsOpen, editingCategory, setEditingCategory, onSave }: CategoryFormDialogProps) {
+  const [formData, setFormData] = useState<Partial<CategoryProps>>({
+    name: editingCategory?.name || "",
+    description: editingCategory?.description || "",
   })
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
-  const handleChange = (field: keyof UnitProps, value: string) => {
+  const handleChange = (field: keyof CategoryProps, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
     setError("")
   }
@@ -32,7 +32,7 @@ export default function UnitsFormDialog({ isOpen, setIsOpen, editingUnit, setEdi
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!formData.name?.trim() || !formData.symbol?.trim()) {
+    if (!formData.name?.trim() || !formData.description?.trim()) {
       setError("Please fill in all required fields")
       return
     }
@@ -41,7 +41,7 @@ export default function UnitsFormDialog({ isOpen, setIsOpen, editingUnit, setEdi
     try {
       await onSave(formData)
     } catch (err: any) {
-      setError(err.message || "Failed to save unit. Please check the input data.")
+      setError(err.message || "Failed to save category. Please check the input data.")
     } finally {
       setIsLoading(false)
     }
@@ -51,17 +51,17 @@ export default function UnitsFormDialog({ isOpen, setIsOpen, editingUnit, setEdi
     <Dialog open={isOpen} onOpenChange={(open) => {
       setIsOpen(open)
       if (!open) {
-        setEditingUnit(null)
+        setEditingCategory(null)
         setFormData({
           name: "",
-          symbol: "",
+          description: "",
         })
         setError("")
       }
     }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{editingUnit ? "Edit Unit" : "Add New Unit"}</DialogTitle>
+          <DialogTitle>{editingCategory ? "Edit Category" : "Add New Category"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -74,11 +74,11 @@ export default function UnitsFormDialog({ isOpen, setIsOpen, editingUnit, setEdi
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="symbol">Symbol *</Label>
+            <Label htmlFor="description">Description</Label>
             <Input
-              id="symbol"
-              value={formData.symbol}
-              onChange={(e) => handleChange("symbol", e.target.value)}
+              id="description"
+              value={formData.description}
+              onChange={(e) => handleChange("description", e.target.value)}
               required
             />
           </div>
@@ -92,10 +92,10 @@ export default function UnitsFormDialog({ isOpen, setIsOpen, editingUnit, setEdi
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {editingUnit ? "Updating..." : "Adding..."}
+                  {editingCategory ? "Updating..." : "Adding..."}
                 </>
               ) : (
-                editingUnit ? "Update Unit" : "Add Unit"
+                editingCategory ? "Update Category" : "Add Category"
               )}
             </Button>
           </DialogFooter>
