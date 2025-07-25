@@ -3,7 +3,7 @@ import { Card,CardContent,CardHeader,CardTitle,} from "@/components/ui/card"
 import { Table,TableBody,TableCell,TableHead,TableHeader,TableRow,} from "@/components/ui/table"
 import { Tooltip,TooltipContent,TooltipTrigger,} from "@/components/ui/tooltip"
 import { Edit, Trash2 } from "lucide-react"
-import { UnitProps } from "../user-management/type"
+import { UnitProps } from "../../type"
 
 interface UnitsTableProps {
   units: UnitProps[];

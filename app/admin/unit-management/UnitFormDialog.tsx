@@ -6,7 +6,7 @@ import { Dialog,DialogContent, DialogHeader, DialogTitle,
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Loader2 } from "lucide-react"
-import { UnitProps } from "../user-management/type"
+import { UnitProps } from "../../type"
 
 interface UnitsFormDialogProps {
   isOpen: boolean;

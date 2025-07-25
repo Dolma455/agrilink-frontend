@@ -16,3 +16,9 @@ export interface UnitProps {
   name: string;
   symbol: string;
 }
+
+export interface CategoryProps {
+    id:string;
+    name: string;
+    description: string;
+}
