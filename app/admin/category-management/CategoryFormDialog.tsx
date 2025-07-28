@@ -1,28 +1,43 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Dialog,DialogContent, DialogHeader, DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog"
+import { Dialog,DialogContent,DialogHeader,DialogTitle,DialogFooter,} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Loader2 } from "lucide-react"
-import { CategoryProps} from "../../type"
+import { CategoryProps } from "../../type"
 
 interface CategoryFormDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   editingCategory: CategoryProps | null;
-  setEditingCategory: (unit: CategoryProps | null) => void;
+  setEditingCategory: (category: CategoryProps | null) => void;
   onSave: (formData: Partial<CategoryProps>) => Promise<void>;
 }
 
 export default function CategoriesFormDialog({ isOpen, setIsOpen, editingCategory, setEditingCategory, onSave }: CategoryFormDialogProps) {
   const [formData, setFormData] = useState<Partial<CategoryProps>>({
-    name: editingCategory?.name || "",
-    description: editingCategory?.description || "",
+    name: "",
+    description: "",
   })
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+
+  // Sync formData with editingCategory when it changes
+  useEffect(() => {
+    if (editingCategory) {
+      setFormData({
+        name: editingCategory.name || "",
+        description: editingCategory.description || "",
+      })
+      setError("")
+    } else if (isOpen) {
+      setFormData({
+        name: "",
+        description: "",
+      })
+      setError("")
+    }
+  }, [editingCategory, isOpen])
 
   const handleChange = (field: keyof CategoryProps, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -40,25 +55,31 @@ export default function CategoriesFormDialog({ isOpen, setIsOpen, editingCategor
     setIsLoading(true)
     try {
       await onSave(formData)
+      setIsLoading(false)
+      setIsOpen(false)
+      setEditingCategory(null)
     } catch (err: any) {
       setError(err.message || "Failed to save category. Please check the input data.")
-    } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-      setIsOpen(open)
-      if (!open) {
-        setEditingCategory(null)
-        setFormData({
-          name: "",
-          description: "",
-        })
-        setError("")
-      }
-    }}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        setIsOpen(open)
+        if (!open) {
+          setEditingCategory(null)
+          setFormData({
+            name: "",
+            description: "",
+          })
+          setError("")
+          setIsLoading(false)
+        }
+      }}
+    >
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>{editingCategory ? "Edit Category" : "Add New Category"}</DialogTitle>
@@ -74,7 +95,7 @@ export default function CategoriesFormDialog({ isOpen, setIsOpen, editingCategor
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description">Description *</Label>
             <Input
               id="description"
               value={formData.description}
