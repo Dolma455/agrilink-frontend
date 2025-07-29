@@ -71,7 +71,6 @@ export function Sidebar({ userRole = "farmer" }: { userRole?: "farmer" | "vendor
         userRole === "farmer"
           ? [
               { name: "All Products", href: `/${userRole}/products` },
-              { name: "Add Product", href: `/${userRole}/products/add` },
               { name: "Trending Products", href: `/${userRole}/products/trending` },
             ]
           : [
