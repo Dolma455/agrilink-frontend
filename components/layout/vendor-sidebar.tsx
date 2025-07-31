@@ -36,6 +36,10 @@ const navigation = [
     name: "My Orders",
     href: "/vendor/orders",
     icon: Store,
+    children:[
+      {name: "All Orders", href: "/vendor/orders" },
+      {name:"Market Hub", href: "/vendor/orders/market-hub" },
+    ]
   },
   {
     name: "Reports & Stats",
