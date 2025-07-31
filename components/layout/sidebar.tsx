@@ -59,7 +59,7 @@ export function Sidebar({ userRole = "farmer" }: { userRole?: "farmer" | "vendor
         userRole === "farmer"
           ? [
               { name: "All Orders", href: `/${userRole}/orders` },
-              { name: "Market Hub", href: `/${userRole}/market-hub` },
+              { name: "Market Hub", href: `/${userRole}/orders/market-hub` },
             ]
           : [
               { name: "All Orders", href: `/${userRole}/orders` },

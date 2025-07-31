@@ -3,7 +3,8 @@
 
 import { useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Package, PackageCheck, PackageX, AlertTriangle, Calendar, MapPin } from "lucide-react"
+import { Package, PackageCheck, PackageX, AlertTriangle, User, MapPin, Calendar } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 interface MarketHubProduct {
   id: string
@@ -27,14 +28,14 @@ interface AddProduct {
   imageUrl?: string
 }
 
-interface MarketHubCardListProps {
+interface MarketHubFarmerCardListProps {
   products: MarketHubProduct[]
   productList: AddProduct[]
   isLoading: boolean
   onRefresh: () => void
 }
 
-export default function MarketHubCardList({ products, productList, isLoading }: MarketHubCardListProps) {
+export default function MarketHubFarmerCardList({ products, productList, isLoading }: MarketHubFarmerCardListProps) {
   useEffect(() => {
     console.log("productList for images:", productList.map(p => ({ id: p.id, imageUrl: p.imageUrl })))
   }, [productList])
@@ -70,14 +71,14 @@ export default function MarketHubCardList({ products, productList, isLoading }: 
     }
   }
 
-  if (isLoading) return <p>Loading orders...</p>
+  if (isLoading) return <p>Loading vendor orders...</p>
 
   if (!products.length) {
     return (
       <div className="text-center py-12">
         <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
         <h3 className="text-lg font-medium text-gray-900 mb-2">
-          No order requests found
+          No vendor order requests found
         </h3>
         <p className="text-gray-500">
           Try adjusting your search or filter criteria
@@ -93,8 +94,15 @@ export default function MarketHubCardList({ products, productList, isLoading }: 
         return (
           <Card key={request.id} className="hover:shadow-lg transition-shadow duration-200">
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg">{request.productName}</CardTitle>
-              <p className="text-sm text-gray-500">Order Request</p>
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <User className="h-5 w-5 text-gray-500" />
+                  <div>
+                    <CardTitle className="text-lg">{request.productName}</CardTitle>
+                    <p className="text-sm text-gray-500">Vendor Order</p>
+                  </div>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="mb-4">
@@ -141,6 +149,12 @@ export default function MarketHubCardList({ products, productList, isLoading }: 
                     {getStatusBadge(request.status, request.quantity)}
                   </div>
                 </div>
+                <Button
+                  className="w-full bg-green-600 hover:bg-green-700"
+                  onClick={() => console.log("Submit Proposal clicked for:", request.id)}
+                >
+                  Submit Proposal
+                </Button>
               </div>
             </CardContent>
           </Card>
