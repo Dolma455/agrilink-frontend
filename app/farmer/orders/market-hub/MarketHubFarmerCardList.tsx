@@ -1,10 +1,11 @@
 
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Package, PackageCheck, PackageX, AlertTriangle, User, MapPin, Calendar } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import SubmitProposalDialog from "./SubmitProposalDialog"
+import axiosInstance from "@/lib/axiosInstance"
 
 interface MarketHubProduct {
   id: string
@@ -35,10 +36,45 @@ interface MarketHubFarmerCardListProps {
   onRefresh: () => void
 }
 
-export default function MarketHubFarmerCardList({ products, productList, isLoading }: MarketHubFarmerCardListProps) {
+export default function MarketHubFarmerCardList({ products, productList, isLoading, onRefresh }: MarketHubFarmerCardListProps) {
+  const farmerId = "019837a2-6d84-78f8-a691-42fca40ad358"
+  const [submittedProposals, setSubmittedProposals] = useState<{ [marketHubId: string]: boolean }>({})
+  const [refreshKey, setRefreshKey] = useState(0)
+
   useEffect(() => {
     console.log("productList for images:", productList.map(p => ({ id: p.id, imageUrl: p.imageUrl })))
   }, [productList])
+
+  useEffect(() => {
+    const fetchSubmittedProposals = async () => {
+      const proposalsStatus: { [marketHubId: string]: boolean } = {}
+      try {
+        for (const product of products) {
+          const response = await axiosInstance.get(`/api/v1/market-proposal/get-proposals?marketHubId=${product.id}`)
+          console.log("Check Proposal Response:", {
+            status: response.status,
+            data: response.data,
+            url: `/api/v1/market-proposal/get-proposals?marketHubId=${product.id}`,
+          })
+          const hasProposal = response.data.data?.some((proposal: any) => proposal.farmerId === farmerId)
+          proposalsStatus[product.id] = hasProposal
+        }
+        setSubmittedProposals(proposalsStatus)
+      } catch (err: any) {
+        console.error("Check Proposals Error:", {
+          message: err.message,
+          response: err.response?.data,
+          status: err.response?.status,
+        })
+      }
+    }
+    fetchSubmittedProposals()
+  }, [products, farmerId, refreshKey])
+
+  const handleRefresh = () => {
+    setRefreshKey(prev => prev + 1)
+    onRefresh()
+  }
 
   const getProductImage = (productId: string) => {
     const product = productList.find((p) => p.id === productId)
@@ -149,12 +185,12 @@ export default function MarketHubFarmerCardList({ products, productList, isLoadi
                     {getStatusBadge(request.status, request.quantity)}
                   </div>
                 </div>
-                <Button
-                  className="w-full bg-green-600 hover:bg-green-700"
-                  onClick={() => console.log("Submit Proposal clicked for:", request.id)}
-                >
-                  Submit Proposal
-                </Button>
+                <SubmitProposalDialog
+                  request={request}
+                  farmerId={farmerId}
+                  onRefresh={handleRefresh}
+                  disabled={submittedProposals[request.id] || request.status === "Closed"}
+                />
               </div>
             </CardContent>
           </Card>
