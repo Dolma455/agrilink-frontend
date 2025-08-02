@@ -1,9 +1,11 @@
-
 "use client"
 
-import { useEffect } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Package, PackageCheck, PackageX, AlertTriangle, Calendar, MapPin } from "lucide-react"
+import axiosInstance from "@/lib/axiosInstance"
 
 interface MarketHubProduct {
   id: string
@@ -34,14 +36,18 @@ interface MarketHubCardListProps {
   onRefresh: () => void
 }
 
-export default function MarketHubCardList({ products, productList, isLoading }: MarketHubCardListProps) {
+export default function MarketHubCardList({ products, productList, isLoading, onRefresh }: MarketHubCardListProps) {
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false)
+  const [isResponseDialogOpen, setIsResponseDialogOpen] = useState(false)
+  const [responseMessage, setResponseMessage] = useState<string | null>(null)
+  const [selectedMarketHubId, setSelectedMarketHubId] = useState<string | null>(null)
+
   useEffect(() => {
     console.log("productList for images:", productList.map(p => ({ id: p.id, imageUrl: p.imageUrl })))
   }, [productList])
 
   const getProductImage = (productId: string) => {
     const product = productList.find((p) => p.id === productId)
-    console.log("getProductImage:", { productId, found: !!product, imageUrl: product?.imageUrl || "/placeholder.jpg" })
     return product?.imageUrl || "/placeholder.jpg"
   }
 
@@ -67,6 +73,43 @@ export default function MarketHubCardList({ products, productList, isLoading }: 
           Open
         </div>
       )
+    }
+  }
+
+  const handleCancel = async (marketHubId: string) => {
+    if (!marketHubId) {
+      setResponseMessage("Market hub ID is missing.")
+      setIsResponseDialogOpen(true)
+      setIsConfirmDialogOpen(false)
+      return
+    }
+    try {
+      console.log("Canceling order with marketHubId:", marketHubId)
+      const response = await axiosInstance.patch(
+        `/api/v1/marketHub/cancel?marketHubId=${encodeURIComponent(marketHubId)}`,
+        null, // No body needed
+        {
+          headers: {
+            "Accept": "*/*",
+          },
+        }
+      )
+      console.log("Response:", response.data)
+      const message = response.data?.message || (response.status === 204 ? "Market hub order canceled successfully." : "Cancellation completed.")
+      setResponseMessage(message)
+      if (response.data?.isSuccess || response.status === 204) {
+        onRefresh()
+      }
+      setIsResponseDialogOpen(true)
+    } catch (err: any) {
+      console.error("Error canceling order:", err)
+      console.error("Error response:", err.response?.data)
+      const errorMessage = err.response?.data?.errors?.marketHubId?.[0] || err.response?.data?.title || err.message || "Failed to cancel market hub order."
+      setResponseMessage(errorMessage)
+      setIsResponseDialogOpen(true)
+    } finally {
+      setIsConfirmDialogOpen(false)
+      setSelectedMarketHubId(null)
     }
   }
 
@@ -104,7 +147,6 @@ export default function MarketHubCardList({ products, productList, isLoading }: 
                     alt={request.productName}
                     className="w-full h-48 object-cover rounded-lg"
                     onError={(e) => {
-                      console.log("Image load error for:", { productId: request.productId, src: e.currentTarget.src })
                       e.currentTarget.src = "/placeholder.jpg"
                     }}
                   />
@@ -141,11 +183,78 @@ export default function MarketHubCardList({ products, productList, isLoading }: 
                     {getStatusBadge(request.status, request.quantity)}
                   </div>
                 </div>
+                {request.status === "Open" && (
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      console.log("Selected marketHubId:", request.id)
+                      setSelectedMarketHubId(request.id)
+                      setIsConfirmDialogOpen(true)
+                    }}
+                    className="mt-3"
+                  >
+                    Cancel Order
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
         )
       })}
+      <Dialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Cancellation</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to cancel this market hub order?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsConfirmDialogOpen(false)
+                setSelectedMarketHubId(null)
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (selectedMarketHubId) {
+                  handleCancel(selectedMarketHubId)
+                } else {
+                  setResponseMessage("Market hub ID is missing.")
+                  setIsResponseDialogOpen(true)
+                  setIsConfirmDialogOpen(false)
+                }
+              }}
+            >
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isResponseDialogOpen} onOpenChange={setIsResponseDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Action Result</DialogTitle>
+            <DialogDescription>{responseMessage}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsResponseDialogOpen(false)
+                setResponseMessage(null)
+              }}
+            >
+              OK
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

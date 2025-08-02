@@ -7,21 +7,12 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { BarChart3, Bell, Home, LogOut, Package, Settings, ShoppingCart, Store, Truck, User } from "lucide-react"
-import { Children } from "react"
 
 const navigation = [
   {
     name: "Dashboard",
     href: "/vendor/dashboard",
     icon: Home,
-  },
-  {
-    name: "Requests",
-    href: "/vendor/requests",
-    icon: ShoppingCart,
-    children: [
-      { name: "All Requests", href: "/vendor/requests" },
-    ],
   },
   {
     name: "Products",
@@ -37,8 +28,9 @@ const navigation = [
     href: "/vendor/orders",
     icon: Store,
     children:[
-      {name: "All Orders", href: "/vendor/orders" },
       {name:"Market Hub", href: "/vendor/orders/market-hub" },
+      {name:"Requests", href: "/vendor/orders/requests" },
+      {name: "All Orders", href: "/vendor/orders" },
     ]
   },
   {
