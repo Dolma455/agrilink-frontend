@@ -9,8 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogTrigger, DialogContent, DialogTitle } from "@/components/ui/dialog"
-import { Eye, Filter, Package, Search, Trash } from "lucide-react"
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
+import { Eye, Filter, Package, Search } from "lucide-react"
 import axiosInstance from "@/lib/axiosInstance"
 
 interface Order {
@@ -72,6 +71,9 @@ export default function VendorOrdersPage() {
     const statusConfig = {
       Pending: { label: "Pending", variant: "default" as const, icon: Package, color: "bg-yellow-100 text-yellow-800" },
       Completed: { label: "Completed", variant: "default" as const, icon: Package, color: "bg-green-100 text-green-800" },
+      InTransit: { label: "In Transit", variant: "default" as const, icon: Package, color: "bg-blue-100 text-blue-800" },
+      Confirmed: { label: "Confirmed", variant: "default" as const, icon: Package, color: "bg-purple-100 text-purple-800" },
+      
     }
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.Pending
     const Icon = config.icon
@@ -125,7 +127,13 @@ export default function VendorOrdersPage() {
                 <Label htmlFor="search">Search</Label>
                 <div className="relative">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input id="search" placeholder="Product" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-8" />
+                  <Input
+                    id="search"
+                    placeholder="Product"
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    className="pl-8"
+                  />
                 </div>
               </div>
               <div className="space-y-2">
@@ -143,7 +151,14 @@ export default function VendorOrdersPage() {
                 </Select>
               </div>
               <div className="flex items-end">
-                <Button variant="outline" onClick={() => { setSearchTerm(""); setDateFilter("all") }} className="w-full">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSearchTerm("")
+                    setDateFilter("all")
+                  }}
+                  className="w-full"
+                >
                   Clear Filters
                 </Button>
               </div>
@@ -176,7 +191,9 @@ export default function VendorOrdersPage() {
                     {filteredOrders.map(order => (
                       <TableRow key={order.id}>
                         <TableCell>{order.productName}</TableCell>
-                        <TableCell>{order.quantity} {order.unitName}</TableCell>
+                        <TableCell>
+                          {order.quantity} {order.unitName}
+                        </TableCell>
                         <TableCell>Rs. {order.finalPricePerUnit}/unit</TableCell>
                         <TableCell>
                           <div>
@@ -198,14 +215,32 @@ export default function VendorOrdersPage() {
                                 <DialogTitle>Order Details</DialogTitle>
                                 {selectedOrder && (
                                   <div className="space-y-2">
-                                    <img src={selectedOrder.productImageUrl} alt={selectedOrder.productName} className="w-full h-48 object-cover rounded-md" />
-                                    <p><strong>Product:</strong> {selectedOrder.productName}</p>
-                                    <p><strong>Quantity:</strong> {selectedOrder.quantity} {selectedOrder.unitName}</p>
-                                    <p><strong>Final Price:</strong> Rs. {selectedOrder.finalPricePerUnit}/unit</p>
-                                    <p><strong>Total Price:</strong> Rs. {selectedOrder.totalPrice}</p>
-                                    <p><strong>Farmer:</strong> {selectedOrder.farmerName} ({selectedOrder.farmerBusinessName})</p>
-                                    <p><strong>Status:</strong> {selectedOrder.status}</p>
-                                    <p><strong>Ordered At:</strong> {new Date(selectedOrder.orderedAt).toLocaleString()}</p>
+                                    <img
+                                      src={selectedOrder.productImageUrl}
+                                      alt={selectedOrder.productName}
+                                      className="w-full h-48 object-cover rounded-md"
+                                    />
+                                    <p>
+                                      <strong>Product:</strong> {selectedOrder.productName}
+                                    </p>
+                                    <p>
+                                      <strong>Quantity:</strong> {selectedOrder.quantity} {selectedOrder.unitName}
+                                    </p>
+                                    <p>
+                                      <strong>Final Price:</strong> Rs. {selectedOrder.finalPricePerUnit}/unit
+                                    </p>
+                                    <p>
+                                      <strong>Total Price:</strong> Rs. {selectedOrder.totalPrice}
+                                    </p>
+                                    <p>
+                                      <strong>Farmer:</strong> {selectedOrder.farmerName} ({selectedOrder.farmerBusinessName})
+                                    </p>
+                                    <p>
+                                      <strong>Status:</strong> {selectedOrder.status}
+                                    </p>
+                                    <p>
+                                      <strong>Ordered At:</strong> {new Date(selectedOrder.orderedAt).toLocaleString()}
+                                    </p>
                                   </div>
                                 )}
                               </DialogContent>
