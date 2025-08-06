@@ -1,8 +1,6 @@
-
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -10,45 +8,64 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Separator } from "@/components/ui/separator"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Eye, EyeOff, Loader2, Sprout, Users, Truck, BarChart3, ShoppingCart, User } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { Eye, EyeOff, Loader2, Sprout } from "lucide-react"
 import Link from "next/link"
+import axiosInstance from "@/lib/axiosInstance"
 
 export default function LoginPage() {
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [formData, setFormData] = useState({
     email: "",
     password: "",
-    userType: "farmer",
     rememberMe: false,
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError(null)
 
-    // Simulate login API call
-    setTimeout(() => {
-      setIsLoading(false)
-      // Store user type in localStorage for demo
-      localStorage.setItem("userType", formData.userType)
-      localStorage.setItem("userName", "Demo User")
+    try {
+      const response = await axiosInstance.post("/api/v1/user/login", {
+        email: formData.email,
+        password: formData.password,
+      })
 
-      // Redirect based on user type
-      if (formData.userType === "farmer") {
-        router.push("/farmer/dashboard")
+      const data = response.data
+
+      if (!data.isSuccess) {
+        throw new Error(data.message || "Login failed")
       }
-      else if(formData.userType === "admin") {
-        router.push("/admin/dashboard")
-      }
-      else {
+
+      // Store user details in localStorage
+      localStorage.setItem("userId", data.userId)
+      localStorage.setItem("userName", data.name)
+      localStorage.setItem("accessToken", data.accessToken)
+      localStorage.setItem("role", data.role)
+
+      // Redirect based on role
+      if (data.role === "Vendor") {
         router.push("/vendor/dashboard")
+      } else if (data.role === "Farmer") {
+        router.push("/farmer/dashboard")
+      } else if (data.role === "Admin") {
+        router.push("/admin/dashboard")
+      } else {
+        throw new Error("Invalid role returned from server")
       }
-    }, 1500)
+    } catch (err: any) {
+      console.error("Login Error:", err)
+      setError(err.message || "An error occurred during login. Please try again.")
+      setIsDialogOpen(true)
+      setIsLoading(false)
+    }
   }
+
   const handleChange = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
@@ -72,8 +89,6 @@ export default function LoginPage() {
               Connect, manage, and grow your agricultural business with our comprehensive platform.
             </p>
           </div>
-
-          
 
           {/* Stats */}
           <div className="grid grid-cols-3 gap-4 pt-8 border-t border-gray-200">
@@ -106,40 +121,6 @@ export default function LoginPage() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* User Type Selection */}
-                <div className="space-y-3">
-                  <Label>Login as</Label>
-                  <RadioGroup
-                    value={formData.userType}
-                    onValueChange={(value) => handleChange("userType", value)}
-                    className="grid grid-cols-2 gap-4"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="farmer" id="farmer" />
-                      <Label htmlFor="farmer" className="flex items-center gap-2 cursor-pointer">
-                        <Sprout className="h-4 w-4 text-green-600" />
-                        Farmer
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="vendor" id="vendor" />
-                      <Label htmlFor="vendor" className="flex items-center gap-2 cursor-pointer">
-                        <ShoppingCart className="h-4 w-4 text-orange-600" />
-                        Vendor
-                      </Label>
-                    </div>
-                      <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="admin" id="admin" />
-                      <Label htmlFor="admin" className="flex items-center gap-2 cursor-pointer">
-                        <User className="h-4 w-4 text-green-600" />
-                        Admin
-                      </Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-
-                <Separator />
-
                 <div className="space-y-2">
                   <Label htmlFor="email">Email Address</Label>
                   <Input
@@ -218,6 +199,22 @@ export default function LoginPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Error Dialog */}
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Login Error</DialogTitle>
+              <DialogDescription>{error}</DialogDescription>
+            </DialogHeader>
+            <Button
+              onClick={() => setIsDialogOpen(false)}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              Close
+            </Button>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )
