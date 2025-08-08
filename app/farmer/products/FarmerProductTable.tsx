@@ -1,16 +1,17 @@
-
 import { FarmerProductProps } from "../../type"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { PackageCheck, PackageX, AlertTriangle, RefreshCw, Check, EyeOff, Loader2 } from "lucide-react"
+import { PackageCheck, RefreshCw, Loader2 } from "lucide-react"
 import { useState } from "react"
 import axiosInstance from "@/lib/axiosInstance"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Label } from "@radix-ui/react-label"
+import { toast } from "sonner"
+import { Switch } from "@/components/ui/switch"
 
 interface ProductTableProps {
   products: FarmerProductProps[]
@@ -26,28 +27,10 @@ export default function ProductTable({ products, isLoading, onRefresh }: Product
     availableFrom: string;
   }>({ quantity: "", pricePerUnit: "", availableFrom: new Date().toISOString().split('T')[0] })
   const [restockError, setRestockError] = useState<string>("")
-  const [restockSuccess, setRestockSuccess] = useState<string>("")
-  const [soldOutError, setSoldOutError] = useState<string>("")
-  const [soldOutSuccess, setSoldOutSuccess] = useState<string>("")
-  const [soldOutId, setSoldOutId] = useState<string | null>(null)
   const [isLoadingAction, setIsLoadingAction] = useState<string | null>(null)
 
-  const getStatusBadge = (status: string, quantity: number) => {
-    if (status === "Sold Out" || quantity === 0) {
-      return (
-        <Badge variant="destructive" className="flex items-center gap-1">
-          <PackageX className="h-3 w-3" />
-          Sold Out
-        </Badge>
-      )
-    } else if (quantity < 20) {
-      return (
-        <Badge variant="secondary" className="flex items-center gap-1 bg-orange-100 text-orange-800">
-          <AlertTriangle className="h-3 w-3" />
-          Low Stock
-        </Badge>
-      )
-    } else {
+  const getStatusBadge = (status: string) => {
+    if (status === "Available") {
       return (
         <Badge variant="default" className="flex items-center gap-1 bg-green-100 text-green-800">
           <PackageCheck className="h-3 w-3" />
@@ -55,6 +38,11 @@ export default function ProductTable({ products, isLoading, onRefresh }: Product
         </Badge>
       )
     }
+    return (
+      <Badge variant="destructive" className="flex items-center gap-1">
+        Hidden
+      </Badge>
+    )
   }
 
   const handleRestock = async () => {
@@ -89,7 +77,7 @@ export default function ProductTable({ products, isLoading, onRefresh }: Product
         url: `/api/v1/farmer-product/restock/${restockId}`,
         productId: restockId,
       })
-      setRestockSuccess(response.data.message || "Product restocked successfully")
+      toast.success(response.data.message || "Product restocked successfully")
       setRestockId(null)
       setRestockData({ quantity: "", pricePerUnit: "", availableFrom: new Date().toISOString().split('T')[0] })
       setRestockError("")
@@ -105,69 +93,40 @@ export default function ProductTable({ products, isLoading, onRefresh }: Product
         productId: restockId,
       })
       setRestockError(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setIsLoadingAction(null)
     }
   }
 
-  const handleMarkSoldOut = async (id: string) => {
-    setIsLoadingAction(`soldout-${id}`)
-    setSoldOutId(id)
+  const handleToggleStatus = async (id: string, currentStatus: string) => {
+    setIsLoadingAction(`toggle-${id}`)
     try {
-      const payload = { status: "Sold Out" }
-      const response = await axiosInstance.put(`/api/v1/farmer-product/update-status/${id}`, payload, {
+      const newStatus = currentStatus === "Available" ? "Hidden" : "Available"
+      const payload = { status: newStatus }
+      const response = await axiosInstance.patch(`/api/v1/farmer-product/update-status/${id}`, payload, {
         headers: { "Content-Type": "application/json", accept: "*/*" },
       })
-      console.log("Update Status Response:", {
+      console.log("Toggle Status Response:", {
         status: response.status,
         data: response.data,
         payload,
         url: `/api/v1/farmer-product/update-status/${id}`,
         productId: id,
       })
-      setSoldOutSuccess(response.data.message || "Product marked as sold out")
-      setSoldOutId(null)
+      toast.success(response.data.message || `Product status updated to ${newStatus}`)
       onRefresh()
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || "Failed to mark as sold out. Trying alternative payload..."
-      console.error("Update Status Error:", {
+      const errorMessage = err.response?.data?.message || "Failed to update product status."
+      console.error("Toggle Status Error:", {
         message: err.message,
         response: err.response?.data,
         status: err.response?.status,
         url: `/api/v1/farmer-product/update-status/${id}`,
-        payload: { status: "Sold Out" },
+        payload: { status: currentStatus === "Available" ? "Hidden" : "Available" },
         productId: id,
       })
-      setSoldOutError(errorMessage)
-      if (err.response?.status === 400) {
-        try {
-          const fallbackPayload = { isSoldOut: true }
-          const fallbackResponse = await axiosInstance.put(`/api/v1/farmer-product/update-status/${id}`, fallbackPayload, {
-            headers: { "Content-Type": "application/json", accept: "*/*" },
-          })
-          console.log("Update Status Fallback Response:", {
-            status: fallbackResponse.status,
-            data: fallbackResponse.data,
-            payload: fallbackPayload,
-            url: `/api/v1/farmer-product/update-status/${id}`,
-            productId: id,
-          })
-          setSoldOutSuccess(fallbackResponse.data.message || "Product marked as sold out")
-          setSoldOutId(null)
-          onRefresh()
-        } catch (fallbackErr: any) {
-          const fallbackErrorMessage = fallbackErr.response?.data?.message || "Failed to mark as sold out with fallback payload. Please check product ID or authentication."
-          console.error("Update Status Fallback Error:", {
-            message: fallbackErr.message,
-            response: fallbackErr.response?.data,
-            status: fallbackErr.response?.status,
-            url: `/api/v1/farmer-product/update-status/${id}`,
-            payload: { isSoldOut: true },
-            productId: id,
-          })
-          setSoldOutError(fallbackErrorMessage)
-        }
-      }
+      toast.error(errorMessage)
     } finally {
       setIsLoadingAction(null)
     }
@@ -217,7 +176,7 @@ export default function ProductTable({ products, isLoading, onRefresh }: Product
                     <TableCell>{product.category}</TableCell>
                     <TableCell>{product.quantity} {product.unit}</TableCell>
                     <TableCell>Rs. {product.pricePerUnit}/{product.unit}</TableCell>
-                    <TableCell>{getStatusBadge(product.status, product.quantity)}</TableCell>
+                    <TableCell>{getStatusBadge(product.status)}</TableCell>
                     <TableCell>
                       {product.isTrending ? (
                         <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
@@ -232,48 +191,44 @@ export default function ProductTable({ products, isLoading, onRefresh }: Product
                     <TableCell>
                       <TooltipProvider>
                         <div className="flex gap-2">
-                          {product.quantity > 0 && product.quantity < 20 && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                                  onClick={() => setRestockId(product.id)}
-                                  disabled={isLoadingAction === `restock-${product.id}`}
-                                >
-                                  {isLoadingAction === `restock-${product.id}` ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                                onClick={() => setRestockId(product.id)}
+                                disabled={isLoadingAction === `restock-${product.id}`}
+                              >
+                                {isLoadingAction === `restock-${product.id}` ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <RefreshCw className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Restock</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex items-center gap-1">
+                                <Switch
+                                  checked={product.status === "Available"}
+                                  onCheckedChange={() => handleToggleStatus(product.id, product.status)}
+                                  disabled={isLoadingAction === `toggle-${product.id}`}
+                                  className={product.status === "Available" ? "data-[state=checked]:bg-green-600" : ""}
+                                />
+                                <span className="text-sm">
+                                  {isLoadingAction === `toggle-${product.id}` ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
                                   ) : (
-                                    <RefreshCw className="h-4 w-4" />
+                                    product.status
                                   )}
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Restock</TooltipContent>
-                            </Tooltip>
-                          )}
-                          {product.quantity > 0 && product.status !== "Sold Out" && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  className={isLoadingAction === `soldout-${product.id}` ? 
-                                    "bg-red-600 hover:bg-red-700 text-white" : 
-                                    "bg-red-600 hover:bg-red-700 text-white"}
-                                  onClick={() => handleMarkSoldOut(product.id)}
-                                  disabled={isLoadingAction === `soldout-${product.id}`}
-                                >
-                                  {isLoadingAction === `soldout-${product.id}` ? (
-                                    <EyeOff className="h-4 w-4" />
-                                  ) : (
-                                    <Check className="h-4 w-4" />
-                                  )}
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Mark as Sold Out</TooltipContent>
-                            </Tooltip>
-                          )}
+                                </span>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>Toggle Available/Hidden</TooltipContent>
+                          </Tooltip>
                         </div>
                       </TooltipProvider>
                     </TableCell>
@@ -342,57 +297,6 @@ export default function ProductTable({ products, isLoading, onRefresh }: Product
               </Button>
             </DialogFooter>
           </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={!!restockSuccess} onOpenChange={() => setRestockSuccess("")}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Success</DialogTitle>
-          </DialogHeader>
-          <p className="text-green-600">{restockSuccess}</p>
-          <DialogFooter>
-            <Button
-              onClick={() => setRestockSuccess("")}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              OK
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={!!soldOutError} onOpenChange={() => setSoldOutError("")}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Error</DialogTitle>
-          </DialogHeader>
-          <p className="text-red-500">{soldOutError}</p>
-          <DialogFooter>
-            <Button
-              onClick={() => setSoldOutError("")}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              OK
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={!!soldOutSuccess} onOpenChange={() => setSoldOutSuccess("")}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Success</DialogTitle>
-          </DialogHeader>
-          <p className="text-green-600">{soldOutSuccess}</p>
-          <DialogFooter>
-            <Button
-              onClick={() => setSoldOutSuccess("")}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              OK
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
