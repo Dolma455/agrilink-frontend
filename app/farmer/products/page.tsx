@@ -11,12 +11,15 @@ import ProductTable from "./FarmerProductTable"
 import ProductFormDialog from "./FarmerProductFormDialog"
 import { FarmerProductProps, AddProduct, FarmerProductFormProps } from "../../type"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 export default function ProductDashboard() {
   const [products, setProducts] = useState<FarmerProductProps[]>([])
   const [productList, setProductList] = useState<AddProduct[]>([])
+  const [categories, setCategories] = useState<{ value: string; label: string }[]>([])
   const [productLoading, setProductLoading] = useState(false)
   const [productError, setProductError] = useState<string | null>(null)
+  const [categoryError, setCategoryError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [categoryFilter, setCategoryFilter] = useState("all")
@@ -29,18 +32,7 @@ export default function ProductDashboard() {
   const statusOptions = [
     { value: "all", label: "All Status" },
     { value: "Available", label: "Available" },
-    { value: "Sold Out", label: "Sold Out" },
-    { value: "low-stock", label: "Low Stock" },
-  ]
-
-  const categoryOptions = [
-    { value: "all", label: "All Categories" },
-    { value: "Vegetables", label: "Vegetables" },
-    { value: "Fruits", label: "Fruits" },
-    { value: "Grains", label: "Grains" },
-    { value: "Dairy", label: "Dairy" },
-    { value: "Hardware", label: "Hardware" },
-    { value: "Stationery", label: "Stationery" },
+    { value: "Hidden", label: "Hidden" },
   ]
 
   const fetchProducts = async () => {
@@ -65,6 +57,7 @@ export default function ProductDashboard() {
         config: err.config,
       })
       setProductError(err.response?.data?.message || "Failed to load products. Please try again.")
+      toast.error(err.response?.data?.message || "Failed to load products")
     } finally {
       setProductLoading(false)
     }
@@ -83,12 +76,40 @@ export default function ProductDashboard() {
         status: err.response?.status,
         config: err.config,
       })
+      toast.error("Failed to load product list")
+    }
+  }
+
+  const fetchCategories = async () => {
+    try {
+      const response = await axiosInstance.get("/api/v1/category/all", {
+        headers: { accept: "*/*" },
+      })
+      const categoryData = response.data.data || []
+      const categoryOptions = [
+        { value: "all", label: "All Categories" },
+        ...categoryData.map((cat: { id: string; name: string }) => ({
+          value: cat.name,
+          label: cat.name,
+        })),
+      ]
+      setCategories(categoryOptions)
+    } catch (err: any) {
+      console.error("Fetch Categories Error:", {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+        config: err.config,
+      })
+      setCategoryError(err.response?.data?.message || "Failed to load categories. Please try again.")
+      toast.error(err.response?.data?.message || "Failed to load categories")
     }
   }
 
   useEffect(() => {
     fetchProducts()
     fetchProductList()
+    fetchCategories()
   }, [])
 
   const handleSave = async (formData: Partial<FarmerProductFormProps>) => {
@@ -110,6 +131,7 @@ export default function ProductDashboard() {
         headers: { "Content-Type": "application/json", accept: "*/*" },
       })
       await fetchProducts()
+      toast.success("Product added successfully")
     } catch (err: any) {
       console.error("Save Product Error:", {
         message: err.message,
@@ -124,20 +146,24 @@ export default function ProductDashboard() {
 
   const filteredProducts = products.filter((product) => {
     const matchesSearch = product.productName.toLowerCase().includes(searchTerm.toLowerCase())
-    let matchesStatus = true
-    if (statusFilter === "Available") matchesStatus = product.quantity > 0
-    else if (statusFilter === "Sold Out") matchesStatus = product.quantity === 0
-    else if (statusFilter === "low-stock") matchesStatus = product.quantity > 0 && product.quantity < 20
+    const matchesStatus =
+      statusFilter === "all" ||
+      (statusFilter === "Available" && product.status === "Available") ||
+      (statusFilter === "Hidden" && product.status === "Hidden")
     const matchesCategory = categoryFilter === "all" || product.category === categoryFilter
     return matchesSearch && matchesStatus && matchesCategory
   })
 
-  if (productError) return (
+  if (productError || categoryError) return (
     <div className="min-h-screen bg-gray-50/50 p-4 md:p-6 lg:p-8">
-      <p className="text-red-500">Error: {productError}</p>
+      {productError && <p className="text-red-500">Error: {productError}</p>}
+      {categoryError && <p className="text-red-500">Error: {categoryError}</p>}
       <Button
         variant="outline"
-        onClick={fetchProducts}
+        onClick={() => {
+          fetchProducts()
+          fetchCategories()
+        }}
         className="mt-4"
       >
         Retry
@@ -202,7 +228,7 @@ export default function ProductDashboard() {
                     <SelectValue placeholder="All Categories" />
                   </SelectTrigger>
                   <SelectContent>
-                    {categoryOptions.map((opt) => (
+                    {categories.map((opt) => (
                       <SelectItem key={opt.value} value={opt.value}>
                         {opt.label}
                       </SelectItem>
