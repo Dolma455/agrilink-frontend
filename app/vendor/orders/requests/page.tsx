@@ -4,9 +4,9 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog"
-import { Calendar, MapPin, User, Mail, Phone, Plus } from "lucide-react"
-import Link from "next/link"
+import { Calendar, MapPin, User, Mail, Phone, Plus, AlertTriangle } from "lucide-react"
 import axiosInstance from "@/lib/axiosInstance"
+import { useRouter } from "next/navigation"
 
 interface MarketHub {
   id: string
@@ -48,34 +48,58 @@ interface Proposal {
   farmSize?: string
 }
 
+interface FarmerDetails {
+  id: string
+  email: string
+  phone: string
+  address: string
+  farmSize: string
+}
+
 export default function VendorRequests() {
   const [proposals, setProposals] = useState<Proposal[]>([])
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const [responseMessage, setResponseMessage] = useState<string | null>(null)
   const [isResponseDialogOpen, setIsResponseDialogOpen] = useState(false)
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false)
   const [pendingAction, setPendingAction] = useState<{ id: string; action: "accept" | "reject" } | null>(null)
+  const router = useRouter()
 
-  // vendor id
-  const vendorId = "01983fcf-2a08-7546-9503-c90803cfc607"
-
-  // Mocked farmer details
-  const mockFarmerDetails: { [farmerId: string]: { email: string; phone: string; address: string; farmSize: string } } = {
-    "019837a2-6d84-78f8-a691-42fca40ad358": {
-      email: "local.farmer@example.com",
-      phone: "+977-123-456-7890",
-      address: "123 Farm Road, Bouddha",
-      farmSize: "5 acres",
-    },
-  }
+  // Retrieve vendorId from localStorage
+  const vendorId = localStorage.getItem("userId")
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!vendorId) {
+        setError("User not logged in. Please log in to view proposals.")
+        router.push("/login")
+        return
+      }
+
       setIsLoading(true)
+      setError(null)
       try {
-        // Fetch market hubs first
+        // Fetch farmer details
+        const farmerResponse = await axiosInstance.get("/api/v1/user/all", {
+          headers: { accept: "*/*" },
+        })
+        console.log("Fetch Farmer Details Response:", {
+          status: farmerResponse.status,
+          data: farmerResponse.data,
+          url: "/api/v1/user/all",
+        })
+        const farmerDetails: { [farmerId: string]: FarmerDetails } = (farmerResponse.data.data || []).reduce(
+          (acc: { [key: string]: FarmerDetails }, farmer: FarmerDetails) => ({
+            ...acc,
+            [farmer.id]: farmer,
+          }),
+          {}
+        )
+
+        // Fetch market hubs
         const marketHubResponse = await axiosInstance.get(`/api/v1/marketHub/vendor?vendorId=${vendorId}`)
         const marketHubs: MarketHub[] = marketHubResponse.data.data || []
         const vendorMarketHubIds = marketHubs.map((hub) => hub.id)
@@ -98,9 +122,11 @@ export default function VendorRequests() {
           proposal.status !== "Accepted" &&
           proposal.status !== "Rejected"
         )
+
+        // Map proposals with farmer details
         const pendingProposals = vendorProposals.map((proposal: Proposal) => ({
           ...proposal,
-          ...mockFarmerDetails[proposal.farmerId] || {
+          ...farmerDetails[proposal.farmerId] || {
             email: "unknown@example.com",
             phone: "+977-000-000-0000",
             address: "Unknown Address",
@@ -116,6 +142,7 @@ export default function VendorRequests() {
           status: err.response?.status || null,
           url: err.response?.config?.url || "Unknown",
         })
+        setError(err.response?.data?.message || "Failed to load proposals. Please try again.")
         setProposals([])
       } finally {
         setIsLoading(false)
@@ -123,7 +150,7 @@ export default function VendorRequests() {
     }
 
     fetchData()
-  }, [refreshKey, vendorId])
+  }, [refreshKey, vendorId, router])
 
   const handleAction = async (id: string, action: "accept" | "reject") => {
     const endpoint = action === "accept" ? "/api/order/create" : "/api/v1/market-proposal/reject"
@@ -162,6 +189,28 @@ export default function VendorRequests() {
   const openConfirmDialog = (id: string, action: "accept" | "reject") => {
     setPendingAction({ id, action })
     setIsConfirmDialogOpen(true)
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="text-center py-12">
+          <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Error</h3>
+          <p className="text-red-500">{error}</p>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setError(null)
+              setRefreshKey((prev) => prev + 1)
+            }}
+            className="mt-4"
+          >
+            Retry
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   if (isLoading) {

@@ -37,7 +37,7 @@ export default function MarketHub() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const vendorId = "01983fcf-2a08-7546-9503-c90803cfc607"
+  const vendorId = localStorage.getItem("userId") ?? ""
 
   const statusOptions = [
     { value: "all", label: "All Status" },
