@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useState } from "react"
@@ -11,6 +10,7 @@ import axiosInstance from "@/lib/axiosInstance"
 import ProductTable from "./FarmerProductTable"
 import ProductFormDialog from "./FarmerProductFormDialog"
 import { FarmerProductProps, AddProduct, FarmerProductFormProps } from "../../type"
+import { useRouter } from "next/navigation"
 
 export default function ProductDashboard() {
   const [products, setProducts] = useState<FarmerProductProps[]>([])
@@ -21,7 +21,10 @@ export default function ProductDashboard() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const farmerId = "019837a2-6d84-78f8-a691-42fca40ad358"
+  const router = useRouter()
+
+  // Retrieve userId from localStorage
+  const farmerId = localStorage.getItem("userId")
 
   const statusOptions = [
     { value: "all", label: "All Status" },
@@ -41,6 +44,12 @@ export default function ProductDashboard() {
   ]
 
   const fetchProducts = async () => {
+    if (!farmerId) {
+      setProductError("User not logged in. Please log in to view products.")
+      router.push("/login")
+      return
+    }
+
     try {
       setProductLoading(true)
       setProductError(null)
@@ -83,8 +92,12 @@ export default function ProductDashboard() {
   }, [])
 
   const handleSave = async (formData: Partial<FarmerProductFormProps>) => {
+    if (!farmerId) {
+      throw new Error("User not logged in. Please log in to add products.")
+    }
+
     const payload = {
-      farmerId: formData.farmerId!,
+      farmerId: farmerId,
       productId: formData.productId!,
       quantity: formData.quantity!,
       pricePerUnit: formData.pricePerUnit!,
@@ -121,7 +134,7 @@ export default function ProductDashboard() {
 
   if (productError) return (
     <div className="min-h-screen bg-gray-50/50 p-4 md:p-6 lg:p-8">
-      <p className="text-red-500">Error loading products: {productError}</p>
+      <p className="text-red-500">Error: {productError}</p>
       <Button
         variant="outline"
         onClick={fetchProducts}
@@ -224,7 +237,7 @@ export default function ProductDashboard() {
           isOpen={isDialogOpen}
           setIsOpen={setIsDialogOpen}
           onSave={handleSave}
-          farmerId={farmerId}
+          farmerId={farmerId || ""}
           productList={productList}
         />
       </div>
