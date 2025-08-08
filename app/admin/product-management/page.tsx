@@ -19,7 +19,7 @@ export default function ProductsPage() {
   const [editingProduct, setEditingProduct] = useState<ProductProps | null>(null)
   const [categories, setCategories] = useState<CategoryProps[]>([])
   const [units, setUnits] = useState<UnitProps[]>([])
-  const currentUserId = "019837a2-6d84-78f8-a691-42fca40ad358"
+  const currentUserId = localStorage.getItem("userId") ?? ""
 
   // Fetch products
   const fetchProducts = async () => {
@@ -78,7 +78,7 @@ export default function ProductsPage() {
     payload.append("Description", formData.description || "")
     payload.append("CategoryId", formData.categoryId || "")
     payload.append("UnitId", formData.unitId || "")
-    payload.append("CreatedBy", currentUserId)
+    payload.append("CreatedBy", currentUserId ?? "")
     if (formData.imageFile) {
       payload.append("Image", formData.imageFile)
     }
