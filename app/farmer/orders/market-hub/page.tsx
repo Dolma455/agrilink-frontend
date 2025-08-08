@@ -39,7 +39,8 @@ export default function MarketHubFarmer() {
   const [productError, setProductError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
-  const farmerId = "019837a2-6d84-78f8-a691-42fca40ad358" // Same as currentUserId in ProductsPage.tsx
+  
+  const farmerId = localStorage.getItem("userId")
 
   const categoryOptions = [
     { value: "all", label: "All Categories" },

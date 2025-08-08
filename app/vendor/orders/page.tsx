@@ -3,37 +3,15 @@
 import { useState, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card,CardContent,CardHeader,CardTitle,} from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import {
-  Dialog,
-  DialogTrigger,
-  DialogContent,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Eye } from "lucide-react"
+import { Select,SelectContent, SelectItem, SelectTrigger,SelectValue,} from "@/components/ui/select"
+import { Table,TableBody,TableCell,TableHead,TableHeader,TableRow } from "@/components/ui/table"
+import { Dialog,DialogTrigger,DialogContent,DialogTitle } from "@/components/ui/dialog"
+import { Eye, AlertTriangle } from "lucide-react"
 import axiosInstance from "@/lib/axiosInstance"
 import { toast } from "sonner"
+import { useRouter } from "next/navigation"
 
 interface Order {
   id: string
@@ -67,36 +45,59 @@ interface ApiResponse {
   totalPages: number
 }
 
-export default function FarmerOrdersPage() {
+export default function VendorOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const router = useRouter()
 
-  const vendorId = "019837a2-6d84-78f8-a691-42fca40ad358" // Adjust if needed
+  const vendorId = localStorage.getItem("userId")
 
-  useEffect(() => {
-    const fetchOrders = async () => {
-      setIsLoading(true)
-      try {
-        const response = await axiosInstance.get<ApiResponse>("/api/order", {
-          params: { farmerId: vendorId }, // Adjust param name if needed
-        })
-        if (response.data.isSuccess) {
-          setOrders(response.data.data || [])
-        } else {
-          toast.error("Failed to fetch orders")
-        }
-      } catch (error) {
-        console.error("Failed to fetch orders", error)
-        toast.error("Error fetching orders")
-      } finally {
-        setIsLoading(false)
-      }
+  // Move fetchOrders outside useEffect so it can be called elsewhere
+  const fetchOrders = async () => {
+    if (!vendorId) {
+      setError("User not logged in. Please log in to view orders.")
+      router.push("/login")
+      return
     }
 
+    setIsLoading(true)
+    setError(null)
+    try {
+      const response = await axiosInstance.get<ApiResponse>("/api/order", {
+        headers: { "x-vendor-id": vendorId },
+      })
+      console.log("Fetch Orders Response:", {
+        status: response.status,
+        data: response.data,
+        url: "/api/order",
+        vendorId,
+      })
+      if (response.data.isSuccess) {
+        setOrders(response.data.data || [])
+      } else {
+        setError(response.data.message || "Failed to fetch orders")
+        toast.error(response.data.message || "Failed to fetch orders")
+      }
+    } catch (error: any) {
+      console.error("Fetch Orders Error:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        url: error.response?.config?.url,
+      })
+      setError(error.response?.data?.message || "Error fetching orders")
+      toast.error(error.response?.data?.message || "Error fetching orders")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
     fetchOrders()
-  }, [])
+  }, [vendorId, router])
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
@@ -130,7 +131,7 @@ export default function FarmerOrdersPage() {
           status: "Completed",
         },
         {
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "x-vendor-id": vendorId },
         }
       )
 
@@ -153,11 +154,49 @@ export default function FarmerOrdersPage() {
         status: error.response?.status,
         url: error.response?.config?.url,
       })
-      toast.error("Failed to complete order")
+      toast.error(error.response?.data?.message || "Failed to complete order")
     }
   }
 
   const canUpdate = selectedOrder?.status === "Delivered"
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="text-center py-12">
+          <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Error</h3>
+          <p className="text-red-500">{error}</p>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setError(null)
+              setIsLoading(true)
+              fetchOrders()
+            }}
+            className="mt-4"
+          >
+            Retry
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  if (isLoading) {
+    return <div className="min-h-screen bg-gray-50 p-6">Loading orders...</div>
+  }
+
+  if (orders.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="text-center py-12">
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No orders found</h3>
+          <p className="text-gray-500">You have no orders at the moment.</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
@@ -172,111 +211,110 @@ export default function FarmerOrdersPage() {
             <CardTitle>Orders ({orders.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
-              <p>Loading orders...</p>
-            ) : (
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Product</TableHead>
-                      <TableHead>Quantity</TableHead>
-                      <TableHead>Price</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Ordered At</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Product</TableHead>
+                    <TableHead>Quantity</TableHead>
+                    <TableHead>Price</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Ordered At</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {orders.map((order) => (
+                    <TableRow key={order.id}>
+                      <TableCell>{order.productName}</TableCell>
+                      <TableCell>
+                        {order.quantity} {order.unitName}
+                      </TableCell>
+                      <TableCell>Rs. {order.finalPricePerUnit}/unit</TableCell>
+                      <TableCell>{getStatusBadge(order.status)}</TableCell>
+                      <TableCell>{new Date(order.orderedAt).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-right">
+                        <Dialog
+                          open={isDialogOpen && selectedOrder?.id === order.id}
+                          onOpenChange={(open) => {
+                            setIsDialogOpen(open)
+                            if (!open) setSelectedOrder(null)
+                          }}
+                        >
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedOrder(order)
+                                setIsDialogOpen(true)
+                              }}
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogTitle>Order Details</DialogTitle>
+                            {selectedOrder && (
+                              <div className="space-y-3">
+                                <img
+                                  src={selectedOrder.productImageUrl}
+                                  alt={selectedOrder.productName}
+                                  className="w-full h-48 object-cover rounded-md"
+                                  onError={(e) =>
+                                    (e.currentTarget.src = "/placeholder.jpg")
+                                  }
+                                />
+                                <p>
+                                  <strong>Product:</strong> {selectedOrder.productName}
+                                </p>
+                                <p>
+                                  <strong>Quantity:</strong> {selectedOrder.quantity}{" "}
+                                  {selectedOrder.unitName}
+                                </p>
+                                <p>
+                                  <strong>Price:</strong> Rs. {selectedOrder.finalPricePerUnit}/unit
+                                </p>
+                                <p>
+                                  <strong>Total:</strong> Rs. {selectedOrder.totalPrice}
+                                </p>
+                                <p>
+                                  <strong>Status:</strong> {getStatusBadge(selectedOrder.status)}
+                                </p>
+                                <p>
+                                  <strong>Farmer:</strong> {selectedOrder.farmerBusinessName} ({selectedOrder.farmerName})
+                                </p>
+
+                                <Label>Update Status</Label>
+                                <Select
+                                  value="Completed"
+                                  disabled={!canUpdate}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Completed">Completed</SelectItem>
+                                  </SelectContent>
+                                </Select>
+
+                                <Button
+                                  onClick={handleCompleteOrder}
+                                  className="mt-2"
+                                  disabled={!canUpdate}
+                                >
+                                  Update Status
+                                </Button>
+                              </div>
+                            )}
+                          </DialogContent>
+                        </Dialog>
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {orders.map((order) => (
-                      <TableRow key={order.id}>
-                        <TableCell>{order.productName}</TableCell>
-                        <TableCell>
-                          {order.quantity} {order.unitName}
-                        </TableCell>
-                        <TableCell>Rs. {order.finalPricePerUnit}/unit</TableCell>
-                        <TableCell>{getStatusBadge(order.status)}</TableCell>
-                        <TableCell>{new Date(order.orderedAt).toLocaleDateString()}</TableCell>
-                        <TableCell className="text-right">
-                          <Dialog
-                            open={isDialogOpen && selectedOrder?.id === order.id}
-                            onOpenChange={(open) => {
-                              setIsDialogOpen(open)
-                              if (!open) setSelectedOrder(null) // clear on close
-                            }}
-                          >
-                            <DialogTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedOrder(order)
-                                  setIsDialogOpen(true)
-                                }}
-                              >
-                                <Eye className="h-4 w-4 mr-1" />
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogTitle>Order Details</DialogTitle>
-                              {selectedOrder && (
-                                <div className="space-y-3">
-                                  <img
-                                    src={selectedOrder.productImageUrl}
-                                    alt={selectedOrder.productName}
-                                    className="w-full h-48 object-cover rounded-md"
-                                    onError={(e) =>
-                                      (e.currentTarget.src = "/placeholder.jpg")
-                                    }
-                                  />
-                                  <p>
-                                    <strong>Product:</strong> {selectedOrder.productName}
-                                  </p>
-                                  <p>
-                                    <strong>Quantity:</strong> {selectedOrder.quantity}{" "}
-                                    {selectedOrder.unitName}
-                                  </p>
-                                  <p>
-                                    <strong>Price:</strong> Rs. {selectedOrder.finalPricePerUnit}/unit
-                                  </p>
-                                  <p>
-                                    <strong>Total:</strong> Rs. {selectedOrder.totalPrice}
-                                  </p>
-                                  <p>
-                                    <strong>Status:</strong> {getStatusBadge(selectedOrder.status)}
-                                  </p>
-
-                                  <Label>Update Status</Label>
-                                  <Select
-                                    value={"Completed"}
-                                    disabled={!canUpdate}
-                                  >
-                                    <SelectTrigger>
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="Completed">Completed</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-
-                                  <Button
-                                    onClick={handleCompleteOrder}
-                                    className="mt-2"
-                                    disabled={!canUpdate}
-                                  >
-                                    Update Status
-                                  </Button>
-                                </div>
-                              )}
-                            </DialogContent>
-                          </Dialog>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       </div>

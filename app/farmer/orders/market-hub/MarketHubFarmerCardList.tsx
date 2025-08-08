@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useState } from "react"
@@ -6,9 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Package, PackageCheck, PackageX, AlertTriangle, User, MapPin, Calendar } from "lucide-react"
 import SubmitProposalDialog from "./SubmitProposalDialog"
 import axiosInstance from "@/lib/axiosInstance"
+import { useRouter } from "next/navigation"
 
 interface MarketHubProduct {
-  id: string
+id: string
   vendorId: string
   productId: string
   productName: string
@@ -37,8 +37,10 @@ interface MarketHubFarmerCardListProps {
 }
 
 export default function MarketHubFarmerCardList({ products, productList, isLoading, onRefresh }: MarketHubFarmerCardListProps) {
-  const farmerId = "019837a2-6d84-78f8-a691-42fca40ad358"
+  const router = useRouter()
+  const farmerId = localStorage.getItem("userId")
   const [submittedProposals, setSubmittedProposals] = useState<{ [marketHubId: string]: boolean }>({})
+  const [error, setError] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
@@ -47,6 +49,12 @@ export default function MarketHubFarmerCardList({ products, productList, isLoadi
 
   useEffect(() => {
     const fetchSubmittedProposals = async () => {
+      if (!farmerId) {
+        setError("User not logged in. Please log in to view proposals.")
+        router.push("/login")
+        return
+      }
+
       const proposalsStatus: { [marketHubId: string]: boolean } = {}
       try {
         for (const product of products) {
@@ -66,10 +74,11 @@ export default function MarketHubFarmerCardList({ products, productList, isLoadi
           response: err.response?.data,
           status: err.response?.status,
         })
+        setError(err.response?.data?.message || "Failed to load proposals. Please try again.")
       }
     }
     fetchSubmittedProposals()
-  }, [products, farmerId, refreshKey])
+  }, [products, farmerId, refreshKey, router])
 
   const handleRefresh = () => {
     setRefreshKey(prev => prev + 1)
@@ -105,6 +114,25 @@ export default function MarketHubFarmerCardList({ products, productList, isLoadi
         </div>
       )
     }
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Error</h3>
+        <p className="text-red-500">{error}</p>
+        <button
+          onClick={() => {
+            setError(null)
+            handleRefresh()
+          }}
+          className="mt-4 text-green-600 hover:text-green-700"
+        >
+          Retry
+        </button>
+      </div>
+    )
   }
 
   if (isLoading) return <p>Loading vendor orders...</p>
@@ -187,7 +215,7 @@ export default function MarketHubFarmerCardList({ products, productList, isLoadi
                 </div>
                 <SubmitProposalDialog
                   request={request}
-                  farmerId={farmerId}
+                  farmerId={farmerId || ""}
                   onRefresh={handleRefresh}
                   disabled={submittedProposals[request.id] || request.status === "Closed"}
                 />
