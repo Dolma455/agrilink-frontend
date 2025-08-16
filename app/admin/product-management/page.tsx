@@ -19,15 +19,21 @@ export default function ProductsPage() {
   const [editingProduct, setEditingProduct] = useState<ProductProps | null>(null)
   const [categories, setCategories] = useState<CategoryProps[]>([])
   const [units, setUnits] = useState<UnitProps[]>([])
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const [totalPages, setTotalPages] = useState(1)
   const currentUserId = localStorage.getItem("userId") ?? ""
 
-  // Fetch products
-  const fetchProducts = async () => {
+  // Fetch products with pagination
+  const fetchProducts = async (page: number = 1, size: number = 10) => {
     try {
       setProductLoading(true)
       setProductError(null)
-      const response = await axiosInstance.get("/api/v1/product/all")
+      const response = await axiosInstance.get(`/api/v1/product/all?page=${page}&pageSize=${size}`)
       setProducts(response.data.data || response.data.output || [])
+      setTotalPages(response.data.totalPages || 1)
+      setCurrentPage(response.data.currentPage || 1)
+      setPageSize(response.data.pageSize || 10)
     } catch (err: any) {
       console.error("Fetch Products Error:", err)
       setProductError(err.message || "Failed to load products")
@@ -57,10 +63,10 @@ export default function ProductsPage() {
   }
 
   useEffect(() => {
-    fetchProducts()
+    fetchProducts(currentPage, pageSize)
     fetchCategories()
     fetchUnits()
-  }, [])
+  }, [currentPage, pageSize])
 
   const filteredProducts = products.filter((product) =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -88,11 +94,17 @@ export default function ProductsPage() {
         headers: { "Content-Type": "multipart/form-data" },
       })
       console.log("Product saved successfully:", response.data)
-      await fetchProducts()
+      await fetchProducts(currentPage, pageSize)
       setIsDialogOpen(false)
     } catch (err: any) {
       console.error("Save product Error:", err)
       throw new Error(err.response?.data?.message || "Failed to save product")
+    }
+  }
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage)
     }
   }
 
@@ -138,6 +150,9 @@ export default function ProductsPage() {
             setEditingProduct(product)
             setIsDialogOpen(true)
           }}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
         />
 
         <ProductFormDialog

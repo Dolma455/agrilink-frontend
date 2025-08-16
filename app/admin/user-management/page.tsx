@@ -19,13 +19,19 @@ export default function Dashboard() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<UserProps | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const [totalPages, setTotalPages] = useState(1)
 
-  // Fetch Users
-  const fetchUsers = async () => {
+  // Fetch Users with pagination
+  const fetchUsers = async (page: number = 1, size: number = 10) => {
     try {
       setUserLoading(true)
-      const response = await axiosInstance.get("/api/v1/user/all")
+      const response = await axiosInstance.get(`/api/v1/user/all?page=${page}&pageSize=${size}`)
       setUsers(response.data.data || [])
+      setTotalPages(response.data.totalPages || 1)
+      setCurrentPage(response.data.currentPage || 1)
+      setPageSize(response.data.pageSize || 10)
     } catch (err: any) {
       console.error("Fetch Users Error:", err)
       setUserError(err.message || "Failed to load users")
@@ -35,8 +41,8 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
-    fetchUsers()
-  }, [])
+    fetchUsers(currentPage, pageSize)
+  }, [currentPage, pageSize])
 
   // Filter users by role and search term
   const filteredUsers = users.filter(
@@ -53,7 +59,7 @@ export default function Dashboard() {
       try {
         setIsLoading(true)
         await axiosInstance.delete(`/api/v1/user/${id}`)
-        await fetchUsers()
+        await fetchUsers(currentPage, pageSize)
         if (editingUser?.id === id) {
           setIsDialogOpen(false)
           setEditingUser(null)
@@ -106,13 +112,19 @@ export default function Dashboard() {
         })
       }
 
-      await fetchUsers()
+      await fetchUsers(currentPage, pageSize)
       alert(editingUser ? "User updated successfully" : "User added successfully")
       setIsDialogOpen(false)
       setEditingUser(null)
     } catch (err: any) {
       console.error("Save User Error:", err)
       alert(err.message || "Failed to save user")
+    }
+  }
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage)
     }
   }
 
@@ -177,6 +189,9 @@ export default function Dashboard() {
           isLoading={isLoading}
           handleEdit={handleEdit}
           handleDelete={handleDelete}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
         />
 
         {/* Add/Edit User Dialog */}
