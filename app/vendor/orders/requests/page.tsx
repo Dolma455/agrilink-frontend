@@ -56,6 +56,16 @@ interface FarmerDetails {
   farmSize: string
 }
 
+interface ApiResponse {
+  isSuccess: boolean
+  message: string | null
+  data: Proposal[]
+  totalCount: number
+  pageSize: number
+  currentPage: number
+  totalPages: number
+}
+
 export default function VendorRequests() {
   const [proposals, setProposals] = useState<Proposal[]>([])
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null)
@@ -66,13 +76,15 @@ export default function VendorRequests() {
   const [isResponseDialogOpen, setIsResponseDialogOpen] = useState(false)
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false)
   const [pendingAction, setPendingAction] = useState<{ id: string; action: "accept" | "reject" } | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+  const [totalPages, setTotalPages] = useState(1)
   const router = useRouter()
 
-  // Retrieve vendorId from localStorage
   const vendorId = localStorage.getItem("userId")
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchData = async (page: number = 1, size: number = 20) => {
       if (!vendorId) {
         setError("User not logged in. Please log in to view proposals.")
         router.push("/login")
@@ -105,12 +117,16 @@ export default function VendorRequests() {
         const vendorMarketHubIds = marketHubs.map((hub) => hub.id)
         console.log("Fetched Vendor Market Hub IDs:", vendorMarketHubIds)
 
-        // Fetch proposals
-        const proposalResponse = await axiosInstance.get("/api/v1/market-proposal/get-proposals")
+        // Fetch proposals with pagination
+        const proposalResponse = await axiosInstance.get<ApiResponse>("/api/v1/market-proposal/get-proposals", {
+          params: { page, pageSize: size },
+        })
         console.log("Fetch Proposals Response:", {
           status: proposalResponse.status,
           data: proposalResponse.data,
           url: "/api/v1/market-proposal/get-proposals",
+          page,
+          pageSize: size,
         })
 
         const allProposals = proposalResponse.data.data || []
@@ -135,6 +151,9 @@ export default function VendorRequests() {
         }))
         console.log("Filtered Proposals:", pendingProposals)
         setProposals(pendingProposals)
+        setTotalPages(proposalResponse.data.totalPages || 1)
+        setCurrentPage(proposalResponse.data.currentPage || 1)
+        setPageSize(proposalResponse.data.pageSize || 20)
       } catch (err: any) {
         console.error("Fetch Error:", {
           message: err.message || "Unknown error",
@@ -149,8 +168,8 @@ export default function VendorRequests() {
       }
     }
 
-    fetchData()
-  }, [refreshKey, vendorId, router])
+    fetchData(currentPage, pageSize)
+  }, [refreshKey, vendorId, router, currentPage, pageSize])
 
   const handleAction = async (id: string, action: "accept" | "reject") => {
     const endpoint = action === "accept" ? "/api/order/create" : "/api/v1/market-proposal/reject"
@@ -169,6 +188,7 @@ export default function VendorRequests() {
       setResponseMessage(response.data.message || `${action.charAt(0).toUpperCase() + action.slice(1)}ed successfully`)
       if (response.data.isSuccess) {
         setProposals(proposals.filter((proposal) => proposal.id !== id)) // Remove immediately on success
+        setRefreshKey((prev) => prev + 1) // Trigger refresh with current pagination
       }
       setIsResponseDialogOpen(true)
     } catch (err: any) {
@@ -189,6 +209,12 @@ export default function VendorRequests() {
   const openConfirmDialog = (id: string, action: "accept" | "reject") => {
     setPendingAction({ id, action })
     setIsConfirmDialogOpen(true)
+  }
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage)
+    }
   }
 
   if (error) {
@@ -291,107 +317,128 @@ export default function VendorRequests() {
               <p className="text-gray-500">No pending proposals available at the moment.</p>
             </div>
           ) : (
-            proposals.map((proposal, index) => (
-              <Card
-                key={proposal.id}
-                className={`p-4 border rounded-md ${index % 2 === 0 ? "bg-red-50" : "bg-green-50"} shadow-sm hover:shadow-md transition-shadow duration-200`}
-              >
-                <div className="flex justify-between items-start">
-                  <div className="space-y-2">
-                    {/* Farmer Name */}
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <button
-                          onClick={() => setSelectedProposal(proposal)}
-                          className="text-lg font-semibold text-blue-600 hover:underline flex items-center gap-2"
-                        >
-                          <User className="h-5 w-5" />
-                          {proposal.farmer}
-                        </button>
-                      </DialogTrigger>
-                      {selectedProposal?.id === proposal.id && (
-                        <DialogContent className="sm:max-w-md bg-white rounded-xl shadow-lg">
-                          <DialogHeader>
-                            <DialogTitle className="text-2xl font-semibold text-gray-800">
-                              {selectedProposal.farmer}'s Profile
-                            </DialogTitle>
-                          </DialogHeader>
-                          <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
-                            <div className="flex items-start gap-3 p-3 bg-white rounded-lg shadow-sm">
-                              <User className="h-6 w-6 text-blue-500 mt-1" />
-                              <div>
-                                <p className="text-sm font-medium text-gray-500">Name</p>
-                                <p className="text-gray-800 font-medium">{selectedProposal.farmer}</p>
+            <>
+              {proposals.map((proposal, index) => (
+                <Card
+                  key={proposal.id}
+                  className={`p-4 border rounded-md ${index % 2 === 0 ? "bg-red-50" : "bg-green-50"} shadow-sm hover:shadow-md transition-shadow duration-200`}
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-2">
+                      {/* Farmer Name */}
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <button
+                            onClick={() => setSelectedProposal(proposal)}
+                            className="text-lg font-semibold text-blue-600 hover:underline flex items-center gap-2"
+                          >
+                            <User className="h-5 w-5" />
+                            {proposal.farmer}
+                          </button>
+                        </DialogTrigger>
+                        {selectedProposal?.id === proposal.id && (
+                          <DialogContent className="sm:max-w-md bg-white rounded-xl shadow-lg">
+                            <DialogHeader>
+                              <DialogTitle className="text-2xl font-semibold text-gray-800">
+                                {selectedProposal.farmer}'s Profile
+                              </DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                              <div className="flex items-start gap-3 p-3 bg-white rounded-lg shadow-sm">
+                                <User className="h-6 w-6 text-blue-500 mt-1" />
+                                <div>
+                                  <p className="text-sm font-medium text-gray-500">Name</p>
+                                  <p className="text-gray-800 font-medium">{selectedProposal.farmer}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-start gap-3 p-3 bg-white rounded-lg shadow-sm">
+                                <Mail className="h-6 w-6 text-blue-500 mt-1" />
+                                <div>
+                                  <p className="text-sm font-medium text-gray-500">Email</p>
+                                  <p className="text-gray-800">{selectedProposal.email}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-start gap-3 p-3 bg-white rounded-lg shadow-sm">
+                                <Phone className="h-6 w-6 text-blue-500 mt-1" />
+                                <div>
+                                  <p className="text-sm font-medium text-gray-500">Phone</p>
+                                  <p className="text-gray-800">{selectedProposal.phone}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-start gap-3 p-3 bg-white rounded-lg shadow-sm">
+                                <MapPin className="h-6 w-6 text-blue-500 mt-1" />
+                                <div>
+                                  <p className="text-sm font-medium text-gray-500">Address</p>
+                                  <p className="text-gray-800">{selectedProposal.address}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-start gap-3 p-3 bg-white rounded-lg shadow-sm">
+                                <MapPin className="h-6 w-6 text-blue-500 mt-1" />
+                                <div>
+                                  <p className="text-sm font-medium text-gray-500">Farm Size</p>
+                                  <p className="text-gray-800">{selectedProposal.farmSize}</p>
+                                </div>
                               </div>
                             </div>
-                            <div className="flex items-start gap-3 p-3 bg-white rounded-lg shadow-sm">
-                              <Mail className="h-6 w-6 text-blue-500 mt-1" />
-                              <div>
-                                <p className="text-sm font-medium text-gray-500">Email</p>
-                                <p className="text-gray-800">{selectedProposal.email}</p>
-                              </div>
-                            </div>
-                            <div className="flex items-start gap-3 p-3 bg-white rounded-lg shadow-sm">
-                              <Phone className="h-6 w-6 text-blue-500 mt-1" />
-                              <div>
-                                <p className="text-sm font-medium text-gray-500">Phone</p>
-                                <p className="text-gray-800">{selectedProposal.phone}</p>
-                              </div>
-                            </div>
-                            <div className="flex items-start gap-3 p-3 bg-white rounded-lg shadow-sm">
-                              <MapPin className="h-6 w-6 text-blue-500 mt-1" />
-                              <div>
-                                <p className="text-sm font-medium text-gray-500">Address</p>
-                                <p className="text-gray-800">{selectedProposal.address}</p>
-                              </div>
-                            </div>
-                            <div className="flex items-start gap-3 p-3 bg-white rounded-lg shadow-sm">
-                              <MapPin className="h-6 w-6 text-blue-500 mt-1" />
-                              <div>
-                                <p className="text-sm font-medium text-gray-500">Farm Size</p>
-                                <p className="text-gray-800">{selectedProposal.farmSize}</p>
-                              </div>
-                            </div>
-                          </div>
-                        </DialogContent>
-                      )}
-                    </Dialog>
+                          </DialogContent>
+                        )}
+                      </Dialog>
 
-                    <div className="text-sm font-medium text-gray-700">{proposal.productName}</div>
-                    <div className="text-sm flex gap-4">
-                      <span className="text-gray-600">{proposal.quantity} {proposal.unitName}</span>
-                      <span className="text-green-600 font-semibold">Rs. {proposal.offerPricePerUnit}/unit</span>
+                      <div className="text-sm font-medium text-gray-700">{proposal.productName}</div>
+                      <div className="text-sm flex gap-4">
+                        <span className="text-gray-600">{proposal.quantity} {proposal.unitName}</span>
+                        <span className="text-green-600 font-semibold">Rs. {proposal.offerPricePerUnit}/unit</span>
+                      </div>
+
+                      <div className="text-sm flex gap-4 text-gray-500">
+                        <span className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4" />
+                          {new Date(proposal.proposedAt).toLocaleDateString()}
+                        </span>
+                        <span className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4" />
+                          {proposal.location}
+                        </span>
+                      </div>
                     </div>
 
-                    <div className="text-sm flex gap-4 text-gray-500">
-                      <span className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        {new Date(proposal.proposedAt).toLocaleDateString()}
-                      </span>
-                      <span className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4" />
-                        {proposal.location}
-                      </span>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center mt-4 sm:mt-0">
+                      <Button
+                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2"
+                        onClick={() => openConfirmDialog(proposal.id, "accept")}
+                      >
+                        Accept
+                      </Button>
+                      <Button
+                        className="bg-red-600 hover:bg-red-700 text-white px-4 py-2"
+                        onClick={() => openConfirmDialog(proposal.id, "reject")}
+                      >
+                        Reject
+                      </Button>
                     </div>
                   </div>
-
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center mt-4 sm:mt-0">
-                    <Button
-                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2"
-                      onClick={() => openConfirmDialog(proposal.id, "accept")}
-                    >
-                      Accept
-                    </Button>
-                    <Button
-                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2"
-                      onClick={() => openConfirmDialog(proposal.id, "reject")}
-                    >
-                      Reject
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            ))
+                </Card>
+              ))}
+              <div className="flex justify-between items-center mt-4">
+                <Button
+                  disabled={currentPage === 1}
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  variant="outline"
+                >
+                  Previous
+                </Button>
+                <span>
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button
+                  disabled={currentPage === totalPages}
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  variant="outline"
+                >
+                  Next
+                </Button>
+              </div>
+            </>
           )}
         </div>
       </div>

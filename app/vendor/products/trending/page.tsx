@@ -1,7 +1,9 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import Image from "next/image"
 
 // Sample trending products data
@@ -81,6 +83,31 @@ const trendingProducts = [
 ]
 
 export default function TrendingProductsPage() {
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(4) // Display 4 products per page to match grid layout
+  const [totalPages, setTotalPages] = useState(1)
+
+  // Calculate pagination
+  const totalItems = trendingProducts.length
+  const calculatedTotalPages = Math.max(1, Math.ceil(totalItems / pageSize))
+  const startIndex = (currentPage - 1) * pageSize
+  const paginatedProducts = trendingProducts.slice(startIndex, startIndex + pageSize)
+
+  // Update totalPages when trendingProducts or pageSize changes
+  useEffect(() => {
+    setTotalPages(calculatedTotalPages)
+    // Reset to page 1 if currentPage exceeds totalPages
+    if (currentPage > calculatedTotalPages) {
+      setCurrentPage(1)
+    }
+  }, [trendingProducts.length, pageSize])
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage)
+    }
+  }
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -90,35 +117,56 @@ export default function TrendingProductsPage() {
         </div>
       </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {trendingProducts.map((product) => (
-              <Card key={product.id} className="overflow-hidden">
-                <div className="relative h-48 bg-gray-100 mx-4">
-                  <Image
-                src={product.image || "/placeholder.svg"}
-                alt={product.name}
-                fill
-                className="object-cover rounded-lg"
-                    />
-                </div>
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-medium">{product.name}</h3>
-                      <p className="text-sm text-muted-foreground">{product.category}</p>
-                      <p className="font-bold text-green-600">Revenue: {product.revenue}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-green-600">{product.price}</p>
-                      <Badge variant="outline" className="mt-1">
-                        {product.sales} sales
-                      </Badge>
-                    </div>
+      <div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {paginatedProducts.map((product) => (
+            <Card key={product.id} className="overflow-hidden">
+              <div className="relative h-48 bg-gray-100 mx-4">
+                <Image
+                  src={product.image || "/placeholder.svg"}
+                  alt={product.name}
+                  fill
+                  className="object-cover rounded-lg"
+                />
+              </div>
+              <CardContent className="p-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-medium">{product.name}</h3>
+                    <p className="text-sm text-muted-foreground">{product.category}</p>
+                    <p className="font-bold text-green-600">Revenue: {product.revenue}</p>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  <div className="text-right">
+                    <p className="font-bold text-green-600">{product.price}</p>
+                    <Badge variant="outline" className="mt-1">
+                      {product.sales} sales
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <div className="flex justify-between items-center mt-6">
+          <Button
+            disabled={currentPage === 1}
+            onClick={() => handlePageChange(currentPage - 1)}
+            variant="outline"
+          >
+            Previous
+          </Button>
+          <span>
+            Page {currentPage} of {totalPages}
+          </span>
+          <Button
+            disabled={currentPage === totalPages}
+            onClick={() => handlePageChange(currentPage + 1)}
+            variant="outline"
+          >
+            Next
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }

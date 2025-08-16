@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,6 +14,9 @@ export default function ProductDashboard() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [categoryFilter, setCategoryFilter] = useState("all")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(5) // Display 5 products per page to match small dataset
+  const [totalPages, setTotalPages] = useState(1)
 
   const products = [
     { id: "PRD001", name: "Tomatoes", category: "Vegetables", quantity: 80, unit: "kg", price: 30, status: "available", trending: true, lastUpdated: "2024-01-15" },
@@ -50,6 +53,7 @@ export default function ProductDashboard() {
     }
   }
 
+  // Filter and paginate products
   const filteredProducts = products.filter((product) => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase())
     let matchesStatus = true
@@ -59,6 +63,26 @@ export default function ProductDashboard() {
     const matchesCategory = categoryFilter === "all" || product.category === categoryFilter
     return matchesSearch && matchesStatus && matchesCategory
   })
+
+  // Calculate pagination
+  const totalItems = filteredProducts.length
+  const calculatedTotalPages = Math.max(1, Math.ceil(totalItems / pageSize))
+  const startIndex = (currentPage - 1) * pageSize
+  const paginatedProducts = filteredProducts.slice(startIndex, startIndex + pageSize)
+
+  // Update totalPages and reset currentPage if necessary
+  useEffect(() => {
+    setTotalPages(calculatedTotalPages)
+    if (currentPage > calculatedTotalPages) {
+      setCurrentPage(1)
+    }
+  }, [filteredProducts.length, pageSize])
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage)
+    }
+  }
 
   return (
     <TooltipProvider>
@@ -103,6 +127,7 @@ export default function ProductDashboard() {
                     setSearchTerm("")
                     setStatusFilter("all")
                     setCategoryFilter("all")
+                    setCurrentPage(1)
                   }}>Clear Filters</Button>
                 </div>
               </div>
@@ -128,53 +153,80 @@ export default function ProductDashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredProducts.map((product) => (
-                      <TableRow key={product.id}>
-                        <TableCell className="font-medium">{product.name}</TableCell>
-                        <TableCell>{product.category}</TableCell>
-                        <TableCell>{product.quantity} {product.unit}</TableCell>
-                        <TableCell>Rs. {product.price}/{product.unit}</TableCell>
-                        <TableCell>{getStatusBadge(product.status, product.quantity)}</TableCell>
-                        <TableCell>
-                          {product.trending ? (
-                            <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-                              <TrendingUp className="h-3 w-3 mr-1" />Trending
-                            </Badge>
-                          ) : <span className="text-muted-foreground text-sm">-</span>}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{product.lastUpdated}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-
-                            {product.quantity === 0 ? (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon"><RefreshCw className="h-4 w-4 text-blue-600" /></Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Restock</TooltipContent>
-                              </Tooltip>
-                            ) : (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon"><PackageX className="h-4 w-4 text-red-600" /></Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Mark as Sold Out</TooltipContent>
-                              </Tooltip>
-                            )}
-
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Delete</TooltipContent>
-                            </Tooltip>
-                          </div>
+                    {paginatedProducts.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center text-muted-foreground">
+                          No products found
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      paginatedProducts.map((product) => (
+                        <TableRow key={product.id}>
+                          <TableCell className="font-medium">{product.name}</TableCell>
+                          <TableCell>{product.category}</TableCell>
+                          <TableCell>{product.quantity} {product.unit}</TableCell>
+                          <TableCell>Rs. {product.price}/{product.unit}</TableCell>
+                          <TableCell>{getStatusBadge(product.status, product.quantity)}</TableCell>
+                          <TableCell>
+                            {product.trending ? (
+                              <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                                <TrendingUp className="h-3 w-3 mr-1" />Trending
+                              </Badge>
+                            ) : <span className="text-muted-foreground text-sm">-</span>}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{product.lastUpdated}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              {product.quantity === 0 ? (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon"><RefreshCw className="h-4 w-4 text-blue-600" /></Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Restock</TooltipContent>
+                                </Tooltip>
+                              ) : (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon"><PackageX className="h-4 w-4 text-red-600" /></Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Mark as Sold Out</TooltipContent>
+                                </Tooltip>
+                              )}
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Delete</TooltipContent>
+                              </Tooltip>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </div>
+              {filteredProducts.length > 0 && (
+                <div className="flex justify-between items-center mt-4">
+                  <Button
+                    disabled={currentPage === 1}
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    variant="outline"
+                  >
+                    Previous
+                  </Button>
+                  <span>
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <Button
+                    disabled={currentPage === totalPages}
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    variant="outline"
+                  >
+                    Next
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

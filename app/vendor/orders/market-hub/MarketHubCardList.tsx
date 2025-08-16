@@ -34,9 +34,12 @@ interface MarketHubCardListProps {
   productList: AddProduct[]
   isLoading: boolean
   onRefresh: () => void
+  currentPage: number
+  totalPages: number
+  onPageChange: (page: number) => void
 }
 
-export default function MarketHubCardList({ products, productList, isLoading, onRefresh }: MarketHubCardListProps) {
+export default function MarketHubCardList({ products, productList, isLoading, onRefresh, currentPage, totalPages, onPageChange }: MarketHubCardListProps) {
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false)
   const [isResponseDialogOpen, setIsResponseDialogOpen] = useState(false)
   const [responseMessage, setResponseMessage] = useState<string | null>(null)
@@ -130,77 +133,99 @@ export default function MarketHubCardList({ products, productList, isLoading, on
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-      {products.map((request) => {
-        const imageUrl = getProductImage(request.productId)
-        return (
-          <Card key={request.id} className="hover:shadow-lg transition-shadow duration-200">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">{request.productName}</CardTitle>
-              <p className="text-sm text-gray-500">Order Request</p>
-            </CardHeader>
-            <CardContent>
-              <div className="mb-4">
-                {imageUrl && imageUrl !== "/placeholder.jpg" ? (
-                  <img
-                    src={imageUrl}
-                    alt={request.productName}
-                    className="w-full h-48 object-cover rounded-lg"
-                    onError={(e) => {
-                      e.currentTarget.src = "/placeholder.jpg"
-                    }}
-                  />
-                ) : (
-                  <div className="w-full h-48 bg-gray-200 flex items-center justify-center rounded-lg">
-                    <span className="text-gray-500">No Image</span>
-                  </div>
-                )}
-              </div>
-              <div className="space-y-3">
-                <div>
-                  <h3 className="font-semibold text-lg text-gray-900">{request.productName}</h3>
-                  <p className="text-sm text-gray-600">{request.additionalInfo}</p>
+    <div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {products.map((request) => {
+          const imageUrl = getProductImage(request.productId)
+          return (
+            <Card key={request.id} className="hover:shadow-lg transition-shadow duration-200">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">{request.productName}</CardTitle>
+                <p className="text-sm text-gray-500">Order Request</p>
+              </CardHeader>
+              <CardContent>
+                <div className="mb-4">
+                  {imageUrl && imageUrl !== "/placeholder.jpg" ? (
+                    <img
+                      src={imageUrl}
+                      alt={request.productName}
+                      className="w-full h-48 object-cover rounded-lg"
+                      onError={(e) => {
+                        e.currentTarget.src = "/placeholder.jpg"
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-48 bg-gray-200 flex items-center justify-center rounded-lg">
+                      <span className="text-gray-500">No Image</span>
+                    </div>
+                  )
+                }
                 </div>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="flex items-center gap-2">
-                    <Package className="h-4 w-4 text-gray-500" />
-                    <span>{request.quantity} units</span>
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="font-semibold text-lg text-gray-900">{request.productName}</h3>
+                    <p className="text-sm text-gray-600">{request.additionalInfo}</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-green-600 font-semibold">
-                      Rs. {request.priceRangeMin}-{request.priceRangeMax}/unit
-                    </span>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Package className="h-4 w-4 text-gray-500" />
+                      <span>{request.quantity} units</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-green-600 font-semibold">
+                        Rs. {request.priceRangeMin}-{request.priceRangeMax}/unit
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-gray-500" />
+                      <span>{new Date(request.requiredDeliveryDate).toLocaleDateString()}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-gray-500" />
+                      <span>{request.location}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {getStatusBadge(request.status, request.quantity)}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-gray-500" />
-                    <span>{new Date(request.requiredDeliveryDate).toLocaleDateString()}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-gray-500" />
-                    <span>{request.location}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {getStatusBadge(request.status, request.quantity)}
-                  </div>
+                  {request.status === "Open" && (
+                    <Button
+                      variant="destructive"
+                      onClick={() => {
+                        console.log("Selected marketHubId:", request.id)
+                        setSelectedMarketHubId(request.id)
+                        setIsConfirmDialogOpen(true)
+                      }}
+                      className="mt-3"
+                    >
+                      Cancel Order
+                    </Button>
+                  )}
                 </div>
-                {request.status === "Open" && (
-                  <Button
-                    variant="destructive"
-                    onClick={() => {
-                      console.log("Selected marketHubId:", request.id)
-                      setSelectedMarketHubId(request.id)
-                      setIsConfirmDialogOpen(true)
-                    }}
-                    className="mt-3"
-                  >
-                    Cancel Order
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )
-      })}
+              </CardContent>
+            </Card>
+          )
+        })}
+      </div>
+      <div className="flex justify-between items-center mt-6">
+        <Button
+          disabled={currentPage === 1}
+          onClick={() => onPageChange(currentPage - 1)}
+          variant="outline"
+        >
+          Previous
+        </Button>
+        <span>
+          Page {currentPage} of {totalPages}
+        </span>
+        <Button
+          disabled={currentPage === totalPages}
+          onClick={() => onPageChange(currentPage + 1)}
+          variant="outline"
+        >
+          Next
+        </Button>
+      </div>
       <Dialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
         <DialogContent>
           <DialogHeader>

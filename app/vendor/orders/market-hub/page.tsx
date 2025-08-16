@@ -1,5 +1,5 @@
-
 "use client"
+
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,6 +10,7 @@ import { Filter, Plus, Search } from "lucide-react"
 import axiosInstance from "@/lib/axiosInstance"
 import MarketHubCardList from "./MarketHubCardList"
 import OrderForm from "./OrderForm"
+import { AddProduct } from "@/app/type"
 
 interface MarketHubProduct {
   id: string
@@ -26,7 +27,15 @@ interface MarketHubProduct {
   createdAt: string
 }
 
-import type { AddProduct } from "@/app/type"
+interface ApiResponse {
+  isSuccess: boolean
+  message: string | null
+  data: MarketHubProduct[]
+  totalCount: number
+  pageSize: number
+  currentPage: number
+  totalPages: number
+}
 
 export default function MarketHub() {
   const [products, setProducts] = useState<MarketHubProduct[]>([])
@@ -37,6 +46,9 @@ export default function MarketHub() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const [totalPages, setTotalPages] = useState(1)
   const vendorId = localStorage.getItem("userId") ?? ""
 
   const statusOptions = [
@@ -56,26 +68,29 @@ export default function MarketHub() {
     { value: "Stationery", label: "Stationery" },
   ]
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (page: number = 1, size: number = 10) => {
     try {
       setProductLoading(true)
       setProductError(null)
-      const response = await axiosInstance.get(`/api/v1/marketHub/vendor?vendorId=${vendorId}`, {
+      const response = await axiosInstance.get<ApiResponse>(`/api/v1/marketHub/vendor?vendorId=${vendorId}&page=${page}&pageSize=${size}`, {
         headers: { accept: "*/*" },
       })
       console.log("Fetch MarketHub Products Response:", {
         status: response.status,
         data: response.data,
-        url: `/api/v1/marketHub/vendor?vendorId=${vendorId}`,
+        url: `/api/v1/marketHub/vendor?vendorId=${vendorId}&page=${page}&pageSize=${size}`,
         authToken: localStorage.getItem("authToken"),
       })
       setProducts(response.data.data || [])
+      setTotalPages(response.data.totalPages || 1)
+      setCurrentPage(response.data.currentPage || 1)
+      setPageSize(response.data.pageSize || 10)
     } catch (err: any) {
       console.error("Fetch MarketHub Products Error:", {
         message: err.message,
         response: err.response?.data,
         status: err.response?.status,
-        url: `/api/v1/marketHub/vendor?vendorId=${vendorId}`,
+        url: `/api/v1/marketHub/vendor?vendorId=${vendorId}&page=${page}&pageSize=${size}`,
         authToken: localStorage.getItem("authToken"),
       })
       setProductError(err.response?.data?.message || "Failed to load orders. Please try again.")
@@ -114,13 +129,20 @@ export default function MarketHub() {
   }
 
   useEffect(() => {
-    fetchProducts()
+    fetchProducts(currentPage, pageSize)
     fetchProductList()
-  }, [])
+  }, [currentPage, pageSize])
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage)
+    }
+  }
 
   const filteredProducts = products.filter((product) => {
     const matchesSearch = product.productName.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === "all" || product.status === statusFilter
+    const matchesStatus = statusFilter === "all" || 
+      (statusFilter === "Low Stock" ? product.quantity > 0 && product.quantity < 20 : product.status === statusFilter)
     const matchesCategory = categoryFilter === "all" || productList.find(p => p.id === product.productId)?.categoryName === categoryFilter
     return matchesSearch && matchesStatus && matchesCategory
   })
@@ -130,7 +152,7 @@ export default function MarketHub() {
       <p className="text-red-500">Error loading orders: {productError}</p>
       <Button
         variant="outline"
-        onClick={() => { fetchProducts(); fetchProductList(); }}
+        onClick={() => { fetchProducts(currentPage, pageSize); fetchProductList(); }}
         className="mt-4"
       >
         Retry
@@ -224,7 +246,10 @@ export default function MarketHub() {
           products={filteredProducts}
           productList={productList}
           isLoading={productLoading}
-          onRefresh={fetchProducts}
+          onRefresh={() => fetchProducts(currentPage, pageSize)}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
         />
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -239,7 +264,7 @@ export default function MarketHub() {
               productList={productList}
               productLoading={productLoading}
               productError={productError}
-              onRefresh={() => { fetchProducts(); fetchProductList(); }}
+              onRefresh={() => { fetchProducts(currentPage, pageSize); fetchProductList(); }}
             />
           </DialogContent>
         </Dialog>
