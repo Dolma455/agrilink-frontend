@@ -1,19 +1,22 @@
 import { Button } from "@/components/ui/button"
-import { Card,CardContent,CardHeader,CardTitle,} from "@/components/ui/card"
-import { Table,TableBody,TableCell,TableHead,TableHeader,TableRow,} from "@/components/ui/table"
-import { Tooltip,TooltipContent,TooltipTrigger,} from "@/components/ui/tooltip"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Edit, Trash2 } from "lucide-react"
 import { UserProps } from "../../type"
 
 interface UserTableProps {
-  users: UserProps[];
-  activeTab: "Farmer" | "Vendor";
-  isLoading: boolean;
-  handleEdit: (user: UserProps) => void;
-  handleDelete: (id: string) => void;
+  users: UserProps[]
+  activeTab: "Farmer" | "Vendor"
+  isLoading: boolean
+  handleEdit: (user: UserProps) => void
+  handleDelete: (id: string) => void
+  currentPage: number
+  totalPages: number
+  onPageChange: (page: number) => void
 }
 
-export default function UserTable({ users, activeTab, isLoading, handleEdit, handleDelete }: UserTableProps) {
+export default function UserTable({ users, activeTab, isLoading, handleEdit, handleDelete, currentPage, totalPages, onPageChange }: UserTableProps) {
   return (
     <Card>
       <CardHeader>
@@ -87,6 +90,25 @@ export default function UserTable({ users, activeTab, isLoading, handleEdit, han
               ))}
             </TableBody>
           </Table>
+        </div>
+        <div className="flex justify-between items-center mt-4">
+          <Button
+            disabled={currentPage === 1}
+            onClick={() => onPageChange(currentPage - 1)}
+            variant="outline"
+          >
+            Previous
+          </Button>
+          <span>
+            Page {currentPage} of {totalPages}
+          </span>
+          <Button
+            disabled={currentPage === totalPages}
+            onClick={() => onPageChange(currentPage + 1)}
+            variant="outline"
+          >
+            Next
+          </Button>
         </div>
       </CardContent>
     </Card>

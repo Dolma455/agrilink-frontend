@@ -3,11 +3,11 @@
 import { useState, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card,CardContent,CardHeader,CardTitle,} from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
-import { Select,SelectContent, SelectItem, SelectTrigger,SelectValue,} from "@/components/ui/select"
-import { Table,TableBody,TableCell,TableHead,TableHeader,TableRow } from "@/components/ui/table"
-import { Dialog,DialogTrigger,DialogContent,DialogTitle } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Dialog, DialogTrigger, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Eye, AlertTriangle } from "lucide-react"
 import axiosInstance from "@/lib/axiosInstance"
 import { toast } from "sonner"
@@ -51,12 +51,14 @@ export default function VendorOrdersPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const [totalPages, setTotalPages] = useState(1)
   const router = useRouter()
 
   const vendorId = localStorage.getItem("userId")
 
-  // Move fetchOrders outside useEffect so it can be called elsewhere
-  const fetchOrders = async () => {
+  const fetchOrders = async (page: number = 1, size: number = 10) => {
     if (!vendorId) {
       setError("User not logged in. Please log in to view orders.")
       router.push("/login")
@@ -68,15 +70,21 @@ export default function VendorOrdersPage() {
     try {
       const response = await axiosInstance.get<ApiResponse>("/api/order", {
         headers: { "x-vendor-id": vendorId },
+        params: { page, pageSize: size },
       })
       console.log("Fetch Orders Response:", {
         status: response.status,
         data: response.data,
         url: "/api/order",
         vendorId,
+        page,
+        pageSize: size,
       })
       if (response.data.isSuccess) {
         setOrders(response.data.data || [])
+        setTotalPages(response.data.totalPages || 1)
+        setCurrentPage(response.data.currentPage || 1)
+        setPageSize(response.data.pageSize || 10)
       } else {
         setError(response.data.message || "Failed to fetch orders")
         toast.error(response.data.message || "Failed to fetch orders")
@@ -96,8 +104,8 @@ export default function VendorOrdersPage() {
   }
 
   useEffect(() => {
-    fetchOrders()
-  }, [vendorId, router])
+    fetchOrders(currentPage, pageSize)
+  }, [vendorId, router, currentPage, pageSize])
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
@@ -144,6 +152,7 @@ export default function VendorOrdersPage() {
         )
         setIsDialogOpen(false)
         setSelectedOrder(null)
+        fetchOrders(currentPage, pageSize) // Refresh with current pagination
       } else {
         toast.error(response.data?.message || "Failed to complete order")
       }
@@ -155,6 +164,12 @@ export default function VendorOrdersPage() {
         url: error.response?.config?.url,
       })
       toast.error(error.response?.data?.message || "Failed to complete order")
+    }
+  }
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage)
     }
   }
 
@@ -172,7 +187,7 @@ export default function VendorOrdersPage() {
             onClick={() => {
               setError(null)
               setIsLoading(true)
-              fetchOrders()
+              fetchOrders(currentPage, pageSize)
             }}
             className="mt-4"
           >
@@ -314,6 +329,25 @@ export default function VendorOrdersPage() {
                   ))}
                 </TableBody>
               </Table>
+            </div>
+            <div className="flex justify-between items-center mt-4">
+              <Button
+                disabled={currentPage === 1}
+                onClick={() => handlePageChange(currentPage - 1)}
+                variant="outline"
+              >
+                Previous
+              </Button>
+              <span>
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button
+                disabled={currentPage === totalPages}
+                onClick={() => handlePageChange(currentPage + 1)}
+                variant="outline"
+              >
+                Next
+              </Button>
             </div>
           </CardContent>
         </Card>

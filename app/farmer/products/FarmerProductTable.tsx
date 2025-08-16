@@ -17,9 +17,12 @@ interface ProductTableProps {
   products: FarmerProductProps[]
   isLoading: boolean
   onRefresh: () => void
+  currentPage: number
+  totalPages: number
+  onPageChange: (page: number) => void
 }
 
-export default function ProductTable({ products, isLoading, onRefresh }: ProductTableProps) {
+export default function ProductTable({ products, isLoading, onRefresh, currentPage, totalPages, onPageChange }: ProductTableProps) {
   const [restockId, setRestockId] = useState<string | null>(null)
   const [restockData, setRestockData] = useState<{
     quantity: string;
@@ -236,6 +239,25 @@ export default function ProductTable({ products, isLoading, onRefresh }: Product
                 ))}
               </TableBody>
             </Table>
+          </div>
+          <div className="flex justify-between items-center mt-4">
+            <Button
+              disabled={currentPage === 1}
+              onClick={() => onPageChange(currentPage - 1)}
+              variant="outline"
+            >
+              Previous
+            </Button>
+            <span>
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button
+              disabled={currentPage === totalPages}
+              onClick={() => onPageChange(currentPage + 1)}
+              variant="outline"
+            >
+              Next
+            </Button>
           </div>
         </CardContent>
       </Card>

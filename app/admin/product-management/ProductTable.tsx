@@ -7,9 +7,12 @@ interface ProductTableProps {
   products: ProductProps[]
   isLoading: boolean
   onEdit: (product: ProductProps) => void
+  currentPage: number
+  totalPages: number
+  onPageChange: (page: number) => void
 }
 
-export default function ProductTable({ products, isLoading, onEdit }: ProductTableProps) {
+export default function ProductTable({ products, isLoading, onEdit, currentPage, totalPages, onPageChange }: ProductTableProps) {
   if (isLoading) return <p>Loading products...</p>
 
   if (!products.length) {
@@ -64,6 +67,25 @@ export default function ProductTable({ products, isLoading, onEdit }: ProductTab
               ))}
             </TableBody>
           </Table>
+        </div>
+        <div className="flex justify-between items-center mt-4">
+          <Button
+            disabled={currentPage === 1}
+            onClick={() => onPageChange(currentPage - 1)}
+            variant="outline"
+          >
+            Previous
+          </Button>
+          <span>
+            Page {currentPage} of {totalPages}
+          </span>
+          <Button
+            disabled={currentPage === totalPages}
+            onClick={() => onPageChange(currentPage + 1)}
+            variant="outline"
+          >
+            Next
+          </Button>
         </div>
       </CardContent>
     </Card>
