@@ -1,24 +1,25 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Separator } from "@/components/ui/separator"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Eye, EyeOff, Loader2, Sprout, ShoppingCart } from "lucide-react"
 import Link from "next/link"
+import axiosInstance from "@/lib/axiosInstance"
 
 export default function SignupPage() {
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false) 
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -26,44 +27,100 @@ export default function SignupPage() {
     phone: "",
     password: "",
     confirmPassword: "",
-    userType: "farmer",
+    userType: "Farmer",
     businessName: "",
     location: "",
     agreeTerms: false,
   })
 
+  const handleChange = (field: string, value: any) => {
+    setFormData((prev) => ({ ...prev, [field]: value }))
+    setError("")
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError("")
 
-    // Simulate signup API call
-    setTimeout(() => {
+    // Validate required fields
+    if (
+      !formData.firstName.trim() ||
+      !formData.lastName.trim() ||
+      !formData.email.trim() ||
+      !formData.phone.trim() ||
+      !formData.businessName.trim() ||
+      !formData.location.trim() ||
+      !formData.userType.trim()
+    ) {
+      setError("Please fill in all required fields")
       setIsLoading(false)
-      // Store user type in localStorage
+      return
+    }
+
+    // Validate password
+    if (!formData.password || !formData.confirmPassword) {
+      setError("Password and Confirm Password are required")
+      setIsLoading(false)
+      return
+    }
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match")
+      setIsLoading(false)
+      return
+    }
+    if (!/^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(formData.password)) {
+      setError("Password must be at least 8 characters long and include a letter, number, and special character")
+      setIsLoading(false)
+      return
+    }
+
+    // Validate terms agreement
+    if (!formData.agreeTerms) {
+      setError("You must agree to the terms and conditions")
+      setIsLoading(false)
+      return
+    }
+
+    // Prepare FormData payload
+    const payload = new FormData()
+    payload.append("FullName", `${formData.firstName} ${formData.lastName}`)
+    payload.append("Email", formData.email)
+    payload.append("Phone", formData.phone)
+    payload.append("BusinessName", formData.businessName)
+    payload.append("Location", formData.location)
+    payload.append("Role", formData.userType.charAt(0).toUpperCase() + formData.userType.slice(1)) // Capitalize role to match API (Farmer/Vendor)
+    payload.append("Password", formData.password)
+
+    try {
+      await axiosInstance.post("/api/v1/user/register", payload, {
+        headers: { "Content-Type": "multipart/form-data" },
+      })
+
+      // Store user type and name in localStorage
       localStorage.setItem("userType", formData.userType)
       localStorage.setItem("userName", `${formData.firstName} ${formData.lastName}`)
 
       // Redirect based on user type
       if (formData.userType === "farmer") {
         router.push("/farmer/dashboard")
-      } 
-      else if (formData.userType === "vendor") {
+      } else if (formData.userType === "vendor") {
         router.push("/vendor/dashboard")
-      }
-      else {
+      } else {
         router.push("/admin/dashboard")
       }
-    }, 1500)
-  }
-
-  const handleChange = (field: string, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
+    } catch (err: any) {
+      console.error("Signup Error:", err)
+      setError(err.response?.data?.message || "Failed to create account. Please check your input data.")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-100 flex items-center justify-center p-4">
       <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-8 items-center">
-        {/* Left Side*/}
+        {/* Left Side */}
         <div className="hidden lg:block space-y-8">
           <div className="space-y-4">
             <div className="flex items-center gap-3">
@@ -144,7 +201,7 @@ export default function SignupPage() {
                     <Label htmlFor="firstName">First Name</Label>
                     <Input
                       id="firstName"
-                      placeholder="John"
+                      placeholder="Enter First Name"
                       value={formData.firstName}
                       onChange={(e) => handleChange("firstName", e.target.value)}
                       required
@@ -154,7 +211,7 @@ export default function SignupPage() {
                     <Label htmlFor="lastName">Last Name</Label>
                     <Input
                       id="lastName"
-                      placeholder="Doe"
+                      placeholder="Enter Last Name"
                       value={formData.lastName}
                       onChange={(e) => handleChange("lastName", e.target.value)}
                       required
@@ -167,7 +224,7 @@ export default function SignupPage() {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="john@example.com"
+                    placeholder="Enter Email"
                     value={formData.email}
                     onChange={(e) => handleChange("email", e.target.value)}
                     required
@@ -178,8 +235,8 @@ export default function SignupPage() {
                   <Label htmlFor="phone">Phone Number</Label>
                   <Input
                     id="phone"
-                    type="tel"
-                    placeholder="+91 98765 43210"
+                    type="phone"
+                    placeholder="+977 9800000000"
                     value={formData.phone}
                     onChange={(e) => handleChange("phone", e.target.value)}
                     required
@@ -202,7 +259,7 @@ export default function SignupPage() {
                   <Label htmlFor="location">Location</Label>
                   <Input
                     id="location"
-                    placeholder="City, State"
+                    placeholder="Enter your location"
                     value={formData.location}
                     onChange={(e) => handleChange("location", e.target.value)}
                     required
@@ -222,15 +279,6 @@ export default function SignupPage() {
                       required
                       className="pr-10"
                     />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-0 top-0 h-full w-10"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
                   </div>
                 </div>
 
@@ -246,17 +294,26 @@ export default function SignupPage() {
                       required
                       className="pr-10"
                     />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-0 top-0 h-full w-10"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    >
-                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
                   </div>
                 </div>
+
+                {/* Terms and Conditions Checkbox */}
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="agreeTerms"
+                    checked={formData.agreeTerms}
+                    onCheckedChange={(checked) => handleChange("agreeTerms", checked)}
+                  />
+                  <Label htmlFor="agreeTerms" className="text-sm text-gray-600">
+                    I agree to the{" "}
+                    <Link href="/terms" className="text-green-600 hover:text-green-700">
+                      Terms and Conditions
+                    </Link>
+                  </Label>
+                </div>
+
+                {/* Error Message */}
+                {error && <p className="text-red-500 text-sm">{error}</p>}
 
                 <Button
                   type="submit"
@@ -269,7 +326,7 @@ export default function SignupPage() {
                       Creating account...
                     </>
                   ) : (
-                    "Create Account"
+                    "Sign Up"
                   )}
                 </Button>
               </form>
