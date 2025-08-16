@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -39,6 +38,9 @@ export default function MarketHubFarmer() {
   const [productError, setProductError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const [totalPages, setTotalPages] = useState(1)
   
   const farmerId = localStorage.getItem("userId")
 
@@ -52,26 +54,34 @@ export default function MarketHubFarmer() {
     { value: "Stationery", label: "Stationery" },
   ]
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (page: number = 1, size: number = 10) => {
+    if (!farmerId) {
+      setProductError("User not logged in. Please log in to view orders.")
+      return
+    }
+
     try {
       setProductLoading(true)
       setProductError(null)
-      const response = await axiosInstance.get(`/api/v1/marketHub/farmer?farmerId=${farmerId}`, {
+      const response = await axiosInstance.get(`/api/v1/marketHub/farmer?farmerId=${farmerId}&page=${page}&pageSize=${size}`, {
         headers: { accept: "*/*" },
       })
       console.log("Fetch MarketHub Farmer Products Response:", {
         status: response.status,
         data: response.data,
-        url: `/api/v1/marketHub/farmer?farmerId=${farmerId}`,
+        url: `/api/v1/marketHub/farmer?farmerId=${farmerId}&page=${page}&pageSize=${size}`,
         authToken: localStorage.getItem("authToken"),
       })
       setProducts(response.data.data || [])
+      setTotalPages(response.data.totalPages || 1)
+      setCurrentPage(response.data.currentPage || 1)
+      setPageSize(response.data.pageSize || 10)
     } catch (err: any) {
       console.error("Fetch MarketHub Farmer Products Error:", {
         message: err.message,
         response: err.response?.data,
         status: err.response?.status,
-        url: `/api/v1/marketHub/farmer?farmerId=${farmerId}`,
+        url: `/api/v1/marketHub/farmer?farmerId=${farmerId}&page=${page}&pageSize=${size}`,
         authToken: localStorage.getItem("authToken"),
       })
       setProductError(err.response?.data?.message || "Failed to load vendor orders. Please try again.")
@@ -110,9 +120,15 @@ export default function MarketHubFarmer() {
   }
 
   useEffect(() => {
-    fetchProducts()
+    fetchProducts(currentPage, pageSize)
     fetchProductList()
-  }, [])
+  }, [currentPage, pageSize])
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage)
+    }
+  }
 
   const filteredProducts = products.filter((product) => {
     const matchesSearch = product.productName.toLowerCase().includes(searchTerm.toLowerCase())
@@ -125,7 +141,7 @@ export default function MarketHubFarmer() {
       <p className="text-red-500">Error loading vendor orders: {productError}</p>
       <Button
         variant="outline"
-        onClick={() => { fetchProducts(); fetchProductList(); }}
+        onClick={() => { fetchProducts(currentPage, pageSize); fetchProductList(); }}
         className="mt-4"
       >
         Retry
@@ -197,7 +213,10 @@ export default function MarketHubFarmer() {
           products={filteredProducts}
           productList={productList}
           isLoading={productLoading}
-          onRefresh={fetchProducts}
+          onRefresh={() => fetchProducts(currentPage, pageSize)}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
         />
       </div>
     </div>

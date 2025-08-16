@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Filter, Plus, Search } from "lucide-react"
 import axiosInstance from "@/lib/axiosInstance"
@@ -12,6 +11,7 @@ import ProductFormDialog from "./FarmerProductFormDialog"
 import { FarmerProductProps, AddProduct, FarmerProductFormProps } from "../../type"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { Input } from "@/components/ui/input"
 
 export default function ProductDashboard() {
   const [products, setProducts] = useState<FarmerProductProps[]>([])
@@ -24,6 +24,9 @@ export default function ProductDashboard() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+  const [totalPages, setTotalPages] = useState(1)
   const router = useRouter()
 
   // Retrieve userId from localStorage
@@ -35,7 +38,8 @@ export default function ProductDashboard() {
     { value: "Hidden", label: "Hidden" },
   ]
 
-  const fetchProducts = async () => {
+  // Fetch products with pagination
+  const fetchProducts = async (page: number = 1, size: number = 20) => {
     if (!farmerId) {
       setProductError("User not logged in. Please log in to view products.")
       router.push("/login")
@@ -45,10 +49,13 @@ export default function ProductDashboard() {
     try {
       setProductLoading(true)
       setProductError(null)
-      const response = await axiosInstance.get(`/api/v1/farmer-product/get-all?farmerId=${farmerId}`, {
+      const response = await axiosInstance.get(`/api/v1/farmer-product/get-all?farmerId=${farmerId}&page=${page}&pageSize=${size}`, {
         headers: { accept: "*/*" },
       })
       setProducts(response.data.data || [])
+      setTotalPages(response.data.totalPages || 1)
+      setCurrentPage(response.data.currentPage || 1)
+      setPageSize(response.data.pageSize || 20)
     } catch (err: any) {
       console.error("Fetch Products Error:", {
         message: err.message,
@@ -107,10 +114,10 @@ export default function ProductDashboard() {
   }
 
   useEffect(() => {
-    fetchProducts()
+    fetchProducts(currentPage, pageSize)
     fetchProductList()
     fetchCategories()
-  }, [])
+  }, [currentPage, pageSize])
 
   const handleSave = async (formData: Partial<FarmerProductFormProps>) => {
     if (!farmerId) {
@@ -130,7 +137,7 @@ export default function ProductDashboard() {
       await axiosInstance.post("/api/v1/farmer-product/create", payload, {
         headers: { "Content-Type": "application/json", accept: "*/*" },
       })
-      await fetchProducts()
+      await fetchProducts(currentPage, pageSize)
       toast.success("Product added successfully")
     } catch (err: any) {
       console.error("Save Product Error:", {
@@ -141,6 +148,12 @@ export default function ProductDashboard() {
         payload: JSON.stringify(payload),
       })
       throw new Error(err.response?.data?.message || "Failed to save product")
+    }
+  }
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage)
     }
   }
 
@@ -161,7 +174,7 @@ export default function ProductDashboard() {
       <Button
         variant="outline"
         onClick={() => {
-          fetchProducts()
+          fetchProducts(currentPage, pageSize)
           fetchCategories()
         }}
         className="mt-4"
@@ -256,7 +269,10 @@ export default function ProductDashboard() {
         <ProductTable
           products={filteredProducts}
           isLoading={productLoading}
-          onRefresh={fetchProducts}
+          onRefresh={() => fetchProducts(currentPage, pageSize)}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
         />
 
         <ProductFormDialog

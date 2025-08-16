@@ -3,11 +3,11 @@
 import { useState, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card,CardContent,CardHeader,CardTitle,} from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
-import { Select,SelectContent,SelectItem,SelectTrigger,SelectValue,} from "@/components/ui/select"
-import { Table,TableBody,TableCell,TableHead,TableHeader,TableRow } from "@/components/ui/table"
-import { Dialog,DialogTrigger,DialogContent,DialogTitle,} from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Dialog, DialogTrigger, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Eye } from "lucide-react"
 import axiosInstance from "@/lib/axiosInstance"
 import { toast } from "sonner"
@@ -39,27 +39,39 @@ export default function FarmerOrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [statusUpdate, setStatusUpdate] = useState<string>("")
   const [isLoading, setIsLoading] = useState(true)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const [totalPages, setTotalPages] = useState(1)
 
   const farmerId = localStorage.getItem("userId")
 
-  useEffect(() => {
-    const fetchOrders = async () => {
-      setIsLoading(true)
-      try {
-        const response = await axiosInstance.get("/api/order", {
-          params: { farmerId },
-        })
-        setOrders(response.data?.data || [])
-      } catch (error) {
-        console.error("Failed to fetch orders", error)
-        toast.error("Error fetching orders")
-      } finally {
-        setIsLoading(false)
-      }
+  // Fetch orders with pagination
+  const fetchOrders = async (page: number = 1, size: number = 10) => {
+    if (!farmerId) {
+      toast.error("User not logged in. Please log in to view orders.")
+      return
     }
 
-    fetchOrders()
-  }, [])
+    setIsLoading(true)
+    try {
+      const response = await axiosInstance.get("/api/order", {
+        params: { farmerId, page, pageSize: size },
+      })
+      setOrders(response.data?.data || [])
+      setTotalPages(response.data.totalPages || 1)
+      setCurrentPage(response.data.currentPage || 1)
+      setPageSize(response.data.pageSize || 10)
+    } catch (error) {
+      console.error("Failed to fetch orders", error)
+      toast.error("Error fetching orders")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchOrders(currentPage, pageSize)
+  }, [currentPage, pageSize])
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
@@ -107,12 +119,19 @@ export default function FarmerOrdersPage() {
         )
         setSelectedOrder(null)
         setStatusUpdate("")
+        fetchOrders(currentPage, pageSize) 
       } else {
         toast.error("Status update failed")
       }
     } catch (error) {
       console.error("Failed to update status", error)
       toast.error("Failed to update status")
+    }
+  }
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage)
     }
   }
 
@@ -132,96 +151,125 @@ export default function FarmerOrdersPage() {
             {isLoading ? (
               <p>Loading orders...</p>
             ) : (
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Product</TableHead>
-                      <TableHead>Quantity</TableHead>
-                      <TableHead>Price</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Ordered At</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {orders.map((order) => (
-                      <TableRow key={order.id}>
-                        <TableCell>{order.productName}</TableCell>
-                        <TableCell>
-                          {order.quantity} {order.unitName}
-                        </TableCell>
-                        <TableCell>Rs. {order.finalPricePerUnit}/unit</TableCell>
-                        <TableCell>{getStatusBadge(order.status)}</TableCell>
-                        <TableCell>{new Date(order.orderedAt).toLocaleDateString()}</TableCell>
-                        <TableCell className="text-right">
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedOrder(order)
-                                  setStatusUpdate(order.status)
-                                }}
-                              >
-                                <Eye className="h-4 w-4 mr-1" />
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogTitle>Order Details</DialogTitle>
-                              {selectedOrder && (
-                                <div className="space-y-3">
-                                  <img
-                                    src={selectedOrder.productImageUrl}
-                                    alt={selectedOrder.productName}
-                                    className="w-full h-48 object-cover rounded-md"
-                                    onError={(e) =>
-                                      (e.currentTarget.src = "/placeholder.jpg")
-                                    }
-                                  />
-                                  <p>
-                                    <strong>Product:</strong> {selectedOrder.productName}
-                                  </p>
-                                  <p>
-                                    <strong>Quantity:</strong> {selectedOrder.quantity}{" "}
-                                    {selectedOrder.unitName}
-                                  </p>
-                                  <p>
-                                    <strong>Price:</strong> Rs. {selectedOrder.finalPricePerUnit}/unit
-                                  </p>
-                                  <p>
-                                    <strong>Total:</strong> Rs. {selectedOrder.totalPrice}
-                                  </p>
-                                  <p>
-                                    <strong>Status:</strong> {getStatusBadge(selectedOrder.status)}
-                                  </p>
-
-                                  <Label>Update Status</Label>
-                                  <Select value={statusUpdate} onValueChange={setStatusUpdate}>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select status" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="Confirmed">Confirmed</SelectItem>
-                                      <SelectItem value="InTransit">InTransit</SelectItem>
-                                      <SelectItem value="Delivered">Delivered</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-
-                                  <Button onClick={handleStatusChange} className="mt-2">
-                                    Update Status
-                                  </Button>
-                                </div>
-                              )}
-                            </DialogContent>
-                          </Dialog>
-                        </TableCell>
+              <>
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Product</TableHead>
+                        <TableHead>Quantity</TableHead>
+                        <TableHead>Price</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Ordered At</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {orders.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-muted-foreground">
+                            No orders found.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        orders.map((order) => (
+                          <TableRow key={order.id}>
+                            <TableCell>{order.productName}</TableCell>
+                            <TableCell>
+                              {order.quantity} {order.unitName}
+                            </TableCell>
+                            <TableCell>Rs. {order.finalPricePerUnit}/unit</TableCell>
+                            <TableCell>{getStatusBadge(order.status)}</TableCell>
+                            <TableCell>{new Date(order.orderedAt).toLocaleDateString()}</TableCell>
+                            <TableCell className="text-right">
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedOrder(order)
+                                      setStatusUpdate(order.status)
+                                    }}
+                                  >
+                                    <Eye className="h-4 w-4 mr-1" />
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                  <DialogTitle>Order Details</DialogTitle>
+                                  {selectedOrder && (
+                                    <div className="space-y-3">
+                                      <img
+                                        src={selectedOrder.productImageUrl}
+                                        alt={selectedOrder.productName}
+                                        className="w-full h-48 object-cover rounded-md"
+                                        onError={(e) =>
+                                          (e.currentTarget.src = "/placeholder.jpg")
+                                        }
+                                      />
+                                      <p>
+                                        <strong>Product:</strong> {selectedOrder.productName}
+                                      </p>
+                                      <p>
+                                        <strong>Quantity:</strong> {selectedOrder.quantity}{" "}
+                                        {selectedOrder.unitName}
+                                      </p>
+                                      <p>
+                                        <strong>Price:</strong> Rs. {selectedOrder.finalPricePerUnit}/unit
+                                      </p>
+                                      <p>
+                                        <strong>Total:</strong> Rs. {selectedOrder.totalPrice}
+                                      </p>
+                                      <p>
+                                        <strong>Status:</strong> {getStatusBadge(selectedOrder.status)}
+                                      </p>
+
+                                      <Label>Update Status</Label>
+                                      <Select value={statusUpdate} onValueChange={setStatusUpdate}>
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Select status" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="Confirmed">Confirmed</SelectItem>
+                                          <SelectItem value="InTransit">InTransit</SelectItem>
+                                          <SelectItem value="Delivered">Delivered</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+
+                                      <Button onClick={handleStatusChange} className="mt-2">
+                                        Update Status
+                                      </Button>
+                                    </div>
+                                  )}
+                                </DialogContent>
+                              </Dialog>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+                <div className="flex justify-between items-center mt-4">
+                  <Button
+                    disabled={currentPage === 1}
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    variant="outline"
+                  >
+                    Previous
+                  </Button>
+                  <span>
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <Button
+                    disabled={currentPage === totalPages}
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    variant="outline"
+                  >
+                    Next
+                  </Button>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
