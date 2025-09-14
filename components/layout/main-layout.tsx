@@ -1,7 +1,7 @@
 "use client"
 
 import { Header } from "./header"
-import { Sidebar } from "./sidebar"
+import { Sidebar } from "./farmer-sidebar"
 
 interface MainLayoutProps {
   children: React.ReactNode

@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Bell, LogOut, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,9 +19,49 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { CheckCircle, Clock, Package, Users, X } from "lucide-react"
 import Link from "next/link"
+import axiosInstance from "@/lib/axiosInstance"
+import { toast } from "sonner"
+import { useRouter } from "next/navigation"
+
+interface UserProfile {
+  id: string
+  fullName: string
+  role: string
+  profilePicture?: string
+}
 
 export function Header() {
-  // Sample notifications data
+  const [user, setUser] = useState<UserProfile | null>(null)
+  const [loading, setLoading] = useState(true)
+  const router = useRouter()
+
+  const userId = typeof window !== "undefined" ? localStorage.getItem("userId") : null
+
+  const fetchUser = async () => {
+    if (!userId) return
+    try {
+      const response = await axiosInstance.get(`/api/v1/user/${userId}`, {
+        headers: { accept: "*/*" },
+      })
+
+      if (response.data.isSuccess) {
+        setUser(response.data.output)
+      } else {
+        toast.error(response.data.message || "Failed to fetch user")
+      }
+    } catch (err: any) {
+      console.error("Fetch User Error:", err)
+      toast.error(err.response?.data?.message || "Failed to fetch user")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchUser()
+  }, [])
+
+  // notifications sample
   const notifications = [
     {
       id: 1,
@@ -37,30 +78,6 @@ export function Header() {
       time: "1 hour ago",
       type: "confirmation",
       unread: true,
-    },
-    {
-      id: 3,
-      title: "Low stock alert",
-      message: "Onions stock is running low (5kg remaining)",
-      time: "3 hours ago",
-      type: "alert",
-      unread: false,
-    },
-    {
-      id: 4,
-      title: "Payment received",
-      message: "Payment of ₹2,400 received for order #ORD785",
-      time: "5 hours ago",
-      type: "payment",
-      unread: false,
-    },
-    {
-      id: 5,
-      title: "New product trending",
-      message: "Your tomatoes are trending with 15 new requests",
-      time: "1 day ago",
-      type: "trending",
-      unread: false,
     },
   ]
 
@@ -80,6 +97,20 @@ export function Header() {
         return <Users className="h-4 w-4 text-purple-600" />
       default:
         return <Bell className="h-4 w-4" />
+    }
+  }
+
+  // role → profile page mapping
+  const getProfilePath = (role?: string) => {
+    switch (role) {
+      case "Admin":
+        return "/admin/profile"
+      case "Vendor":
+        return "/vendor/profile"
+      case "Farmer":
+        return "/farmer/profile"
+      default:
+        return "/profile" // fallback
     }
   }
 
@@ -118,33 +149,43 @@ export function Header() {
                 {notifications.map((notification, index) => (
                   <div key={notification.id}>
                     <div
-                      className={`flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 ${notification.unread ? "bg-blue-50" : ""}`}
+                      className={`flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 ${
+                        notification.unread ? "bg-blue-50" : ""
+                      }`}
                     >
                       <div className="mt-1">{getNotificationIcon(notification.type)}</div>
                       <div className="flex-1 space-y-1">
                         <div className="flex items-center justify-between">
-                          <p className={`text-sm font-medium ${notification.unread ? "font-semibold" : ""}`}>
+                          <p
+                            className={`text-sm font-medium ${
+                              notification.unread ? "font-semibold" : ""
+                            }`}
+                          >
                             {notification.title}
                           </p>
-                          {notification.unread && <div className="h-2 w-2 bg-blue-600 rounded-full"></div>}
+                          {notification.unread && (
+                            <div className="h-2 w-2 bg-blue-600 rounded-full"></div>
+                          )}
                         </div>
-                        <p className="text-sm text-muted-foreground">{notification.message}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {notification.message}
+                        </p>
                         <p className="text-xs text-muted-foreground">{notification.time}</p>
                       </div>
                       <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
                         <X className="h-3 w-3" />
                       </Button>
                     </div>
-                    {index < notifications.length - 1 && <Separator className="my-1" />}
+                    {index < notifications.length - 1 && (
+                      <Separator className="my-1" />
+                    )}
                   </div>
                 ))}
               </div>
             </ScrollArea>
             <div className="p-3 border-t">
               <Button variant="outline" className="w-full" size="sm">
-                <Link href="/vendor/notifications">
-                  View All Notifications
-                </Link>
+                <Link href="/vendor/notifications">View All Notifications</Link>
               </Button>
             </div>
           </PopoverContent>
@@ -155,32 +196,40 @@ export function Header() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-8 w-8 rounded-full">
               <Avatar className="h-8 w-8">
-                <AvatarImage src="/placeholder.svg" alt="User" />
-                <AvatarFallback className="bg-green-100 text-green-700">D</AvatarFallback>
+                <AvatarImage src={user?.profilePicture || "/placeholder.svg"} alt="User" />
+                <AvatarFallback className="bg-green-100 text-green-700">
+                  {user?.fullName ? user.fullName.charAt(0).toUpperCase() : "?"}
+                </AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">Dolma Lama</p>
-                <p className="text-xs leading-none text-muted-foreground">Farmer</p>
+                <p className="text-sm font-medium leading-none">
+                  {loading ? "Loading..." : user?.fullName || "Unknown User"}
+                </p>
+                <p className="text-xs leading-none text-muted-foreground">
+                  {loading ? "Loading..." : user?.role || "Role"}
+                </p>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-            <Link href="/farmer/profile">Profile</Link>
+              <Link href={getProfilePath(user?.role)}>Profile</Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-            <Link href="/login">
-            <Button variant="ghost" className="w-full justify-start text-gray-600 hover:bg-red-600 hover:text-white">
-            <LogOut className="mr-3 h-4 w-4" />
-            Logout
-            </Button>
-          </Link>
+              <Link href="/login">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start text-gray-600 hover:bg-red-600 hover:text-white"
+                >
+                  <LogOut className="mr-3 h-4 w-4" />
+                  Logout
+                </Button>
+              </Link>
             </DropdownMenuItem>
-            
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
