@@ -13,7 +13,7 @@ import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { UserProps } from "@/app/type"
 
-export default function FarmerProfilePage() {
+export default function AdminProfilePage() {
   const [profileData, setProfileData] = useState<UserProps | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [passwordData, setPasswordData] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" })
@@ -22,6 +22,7 @@ export default function FarmerProfilePage() {
   const router = useRouter()
 
   const userId = typeof window !== "undefined" ? localStorage.getItem("userId") : null
+
   if (!userId) router.push("/login")
 
   const fetchProfile = async () => {
@@ -55,8 +56,8 @@ export default function FarmerProfilePage() {
     <div className="h-screen overflow-y-auto bg-gray-50 p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Farmer Profile</h1>
-          <p className="text-gray-600">Manage your farmer profile</p>
+          <h1 className="text-3xl font-bold text-gray-900">Admin Profile</h1>
+          <p className="text-gray-600">Manage your admin account</p>
         </div>
         <div className="flex gap-2">
           {isEditing ? (
@@ -79,17 +80,15 @@ export default function FarmerProfilePage() {
             </Avatar>
             <div className="text-center">
               <h3 className="text-lg font-semibold">{profileData.fullName}</h3>
-              <p className="text-gray-600">{profileData.businessName}</p>
-              <Badge className="mt-2 bg-green-100 text-green-800">Verified Farmer</Badge>
+              <Badge className="mt-2 bg-blue-100 text-blue-800">Admin User</Badge>
             </div>
           </div>
 
           <div className="space-y-6">
-            <div className="space-y-2"><Label>Full Name</Label><Input value={profileData.fullName} onChange={e => setProfileData({...profileData, fullName:e.target.value})} disabled={!isEditing}/></div>
-            <div className="space-y-2"><Label>Email</Label><Input value={profileData.email} onChange={e => setProfileData({...profileData, email:e.target.value})} disabled={!isEditing}/></div>
-            <div className="space-y-2"><Label>Phone</Label><Input value={profileData.phone} onChange={e => setProfileData({...profileData, phone:e.target.value})} disabled={!isEditing}/></div>
-            <div className="space-y-2"><Label>Location</Label><Input value={profileData.location} onChange={e => setProfileData({...profileData, location:e.target.value})} disabled={!isEditing}/></div>
-            <div className="space-y-2"><Label>Farm Name</Label><Input value={profileData.businessName} onChange={e => setProfileData({...profileData, businessName:e.target.value})} disabled={!isEditing}/></div>
+            <div className="space-y-2"><Label>Full Name</Label><Input value={profileData.fullName} onChange={e => setProfileData({...profileData, fullName: e.target.value})} disabled={!isEditing}/></div>
+            <div className="space-y-2"><Label>Email</Label><Input value={profileData.email} onChange={e => setProfileData({...profileData, email: e.target.value})} disabled={!isEditing}/></div>
+            <div className="space-y-2"><Label>Phone</Label><Input value={profileData.phone} onChange={e => setProfileData({...profileData, phone: e.target.value})} disabled={!isEditing}/></div>
+            <div className="space-y-2"><Label>Location</Label><Input value={profileData.location} onChange={e => setProfileData({...profileData, location: e.target.value})} disabled={!isEditing}/></div>
             <div className="space-y-2"><Label>Role</Label><Input value={profileData.role} disabled/></div>
           </div>
         </CardContent>
@@ -98,9 +97,9 @@ export default function FarmerProfilePage() {
       <Card>
         <CardHeader><CardTitle className="flex items-center gap-2"><Lock className="h-5 w-5"/>Change Password</CardTitle></CardHeader>
         <CardContent className="space-y-4 max-w-xl">
-          <div className="space-y-2"><Label>Current Password</Label><Input type="password" value={passwordData.currentPassword} onChange={e=>setPasswordData({...passwordData,currentPassword:e.target.value})}/></div>
-          <div className="space-y-2"><Label>New Password</Label><Input type="password" value={passwordData.newPassword} onChange={e=>setPasswordData({...passwordData,newPassword:e.target.value})}/></div>
-          <div className="space-y-2"><Label>Confirm New Password</Label><Input type="password" value={passwordData.confirmPassword} onChange={e=>setPasswordData({...passwordData,confirmPassword:e.target.value})}/></div>
+          <div className="space-y-2"><Label>Current Password</Label><Input type="password" value={passwordData.currentPassword} onChange={e => setPasswordData({...passwordData, currentPassword:e.target.value})}/></div>
+          <div className="space-y-2"><Label>New Password</Label><Input type="password" value={passwordData.newPassword} onChange={e => setPasswordData({...passwordData, newPassword:e.target.value})}/></div>
+          <div className="space-y-2"><Label>Confirm New Password</Label><Input type="password" value={passwordData.confirmPassword} onChange={e => setPasswordData({...passwordData, confirmPassword:e.target.value})}/></div>
           <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleChangePassword}>Update Password</Button>
         </CardContent>
       </Card>
