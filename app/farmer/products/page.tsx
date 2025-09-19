@@ -70,20 +70,31 @@ export default function ProductDashboard() {
     }
   }
 
-  const fetchProductList = async () => {
+  // Fetch ALL products (the /api/v1/product/all endpoint is paginated, so we iterate pages)
+  const fetchAllProducts = async (pageSize: number = 100) => {
     try {
-      const response = await axiosInstance.get("/api/v1/product/all", {
-        headers: { accept: "*/*" },
-      })
-      setProductList(response.data.data || [])
+      const all: AddProduct[] = []
+      let page = 1
+      let totalPagesLocal = 1
+      do {
+        const response = await axiosInstance.get(`/api/v1/product/all?page=${page}&pageSize=${pageSize}`, {
+          headers: { accept: "*/*" },
+        })
+        const pageData: AddProduct[] = response.data.data || response.data.output || []
+        all.push(...pageData)
+        totalPagesLocal = response.data.totalPages || 1
+        page += 1
+      } while (page <= totalPagesLocal)
+      // Remove duplicate ids just in case (defensive)
+      const dedup = Array.from(new Map(all.map(p => [p.id, p])).values())
+      setProductList(dedup)
     } catch (err: any) {
-      console.error("Fetch Product List Error:", {
+      console.error("Fetch All Products Error:", {
         message: err.message,
         response: err.response?.data,
         status: err.response?.status,
-        config: err.config,
       })
-      toast.error("Failed to load product list")
+      toast.error(err.response?.data?.message || "Failed to load full product list")
     }
   }
 
@@ -115,7 +126,9 @@ export default function ProductDashboard() {
 
   useEffect(() => {
     fetchProducts(currentPage, pageSize)
-    fetchProductList()
+    // Only need to load all products once (do not depend on pagination of farmer products list)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetchAllProducts(200) // attempt larger page size per request to reduce round trips
     fetchCategories()
   }, [currentPage, pageSize])
 

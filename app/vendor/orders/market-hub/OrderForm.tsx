@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select" // keep for other selects if any
+import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Loader2 } from "lucide-react"
 import axiosInstance from "@/lib/axiosInstance"
 import { AddProduct } from "@/app/type"
@@ -186,35 +187,16 @@ export default function OrderForm({
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
         <Label>Product *</Label>
-        <Select
+        <SearchableSelect
           value={formData.productId || ""}
-          onValueChange={(val) => handleChange("productId", val)}
-          disabled={productLoading || isLoading || !!productError}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder={
-              productLoading ? "Loading products..." :
-              productError ? "Error loading products" :
-              productList.length > 0 ? "Select a product" : "No products available"
-            } />
-          </SelectTrigger>
-          <SelectContent>
-            {productList.length > 0 ? (
-              productList.map((product) => (
-                <SelectItem key={product.id} value={product.id}>
-                  {product.name}
-                </SelectItem>
-              ))
-            ) : (
-              <SelectItem value="" disabled>
-                No products available
-              </SelectItem>
-            )}
-          </SelectContent>
-        </Select>
+          onChange={(val) => handleChange("productId", val)}
+          options={productList.map(p => ({ value: p.id, label: p.name }))}
+          placeholder={productLoading ? "Loading products..." : productError ? "Error loading products" : productList.length > 0 ? "Select a product" : "No products available"}
+          emptyMessage={productError ? productError : "No products available"}
+          maxHeight={300}
+        />
         {productError && (
           <div className="flex items-center gap-2">
-            <p className="text-red-500 text-sm">{productError}</p>
             <Button
               variant="outline"
               size="sm"

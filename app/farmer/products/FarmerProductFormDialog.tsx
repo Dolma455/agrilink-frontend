@@ -12,13 +12,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Textarea } from "@/components/ui/textarea"
 import { Loader2 } from "lucide-react"
 import { FarmerProductFormProps, AddProduct } from "../../type"
@@ -171,27 +165,14 @@ export default function ProductFormDialog({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label>Product *</Label>
-            <Select
+            <SearchableSelect
               value={formData.productId || ""}
-              onValueChange={(val) => handleChange("productId", val)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select a product" />
-              </SelectTrigger>
-              <SelectContent>
-                {productList.length > 0 ? (
-                  productList.map((product) => (
-                    <SelectItem key={product.id} value={product.id}>
-                      {product.name}
-                    </SelectItem>
-                  ))
-                ) : (
-                  <SelectItem value="" disabled>
-                    No products available
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
+              onChange={(val) => handleChange("productId", val)}
+              options={productList.map(p => ({ value: p.id, label: p.name }))}
+              placeholder="Select a product"
+              emptyMessage="No products available"
+              maxHeight={300}
+            />
           </div>
 
           <div className="space-y-2">

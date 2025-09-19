@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog"
-import { Calendar, MapPin, User, Mail, Phone, Plus, AlertTriangle } from "lucide-react"
+import { Calendar, MapPin, User, Mail, Phone, AlertTriangle } from "lucide-react"
 import axiosInstance from "@/lib/axiosInstance"
 import { useRouter } from "next/navigation"
 
@@ -80,10 +80,23 @@ export default function VendorRequests() {
   const [pageSize, setPageSize] = useState(20)
   const [totalPages, setTotalPages] = useState(1)
   const router = useRouter()
-
-  const vendorId = localStorage.getItem("userId")
+  const [vendorId, setVendorId] = useState<string | null>(null)
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const id = localStorage.getItem("userId")
+        setVendorId(id)
+      } catch (e) {
+        console.warn("Unable to access localStorage for vendorId", e)
+        setVendorId("")
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (vendorId === null) return
+
     const fetchData = async (page: number = 1, size: number = 20) => {
       if (!vendorId) {
         setError("User not logged in. Please log in to view proposals.")
@@ -94,14 +107,8 @@ export default function VendorRequests() {
       setIsLoading(true)
       setError(null)
       try {
-        // Fetch farmer details
         const farmerResponse = await axiosInstance.get("/api/v1/user/all", {
           headers: { accept: "*/*" },
-        })
-        console.log("Fetch Farmer Details Response:", {
-          status: farmerResponse.status,
-          data: farmerResponse.data,
-          url: "/api/v1/user/all",
         })
         const farmerDetails: { [farmerId: string]: FarmerDetails } = (farmerResponse.data.data || []).reduce(
           (acc: { [key: string]: FarmerDetails }, farmer: FarmerDetails) => ({
@@ -111,35 +118,22 @@ export default function VendorRequests() {
           {}
         )
 
-        // Fetch market hubs
         const marketHubResponse = await axiosInstance.get(`/api/v1/marketHub/vendor?vendorId=${vendorId}`)
         const marketHubs: MarketHub[] = marketHubResponse.data.data || []
         const vendorMarketHubIds = marketHubs.map((hub) => hub.id)
-        console.log("Fetched Vendor Market Hub IDs:", vendorMarketHubIds)
 
-        // Fetch proposals with pagination
         const proposalResponse = await axiosInstance.get<ApiResponse>("/api/v1/market-proposal/get-proposals", {
           params: { page, pageSize: size },
         })
-        console.log("Fetch Proposals Response:", {
-          status: proposalResponse.status,
-          data: proposalResponse.data,
-          url: "/api/v1/market-proposal/get-proposals",
-          page,
-          pageSize: size,
-        })
 
         const allProposals = proposalResponse.data.data || []
-        console.log("All Proposals:", allProposals)
-
-        // Filter for proposals with vendor's marketHubIds and not accepted or rejected
-        const vendorProposals = allProposals.filter((proposal: Proposal) =>
-          vendorMarketHubIds.includes(proposal.marketHubId) &&
-          proposal.status !== "Accepted" &&
-          proposal.status !== "Rejected"
+        const vendorProposals = allProposals.filter(
+          (proposal: Proposal) =>
+            vendorMarketHubIds.includes(proposal.marketHubId) &&
+            proposal.status !== "Accepted" &&
+            proposal.status !== "Rejected"
         )
 
-        // Map proposals with farmer details
         const pendingProposals = vendorProposals.map((proposal: Proposal) => ({
           ...proposal,
           ...farmerDetails[proposal.farmerId] || {
@@ -149,18 +143,13 @@ export default function VendorRequests() {
             farmSize: "Unknown",
           },
         }))
-        console.log("Filtered Proposals:", pendingProposals)
+
         setProposals(pendingProposals)
         setTotalPages(proposalResponse.data.totalPages || 1)
         setCurrentPage(proposalResponse.data.currentPage || 1)
         setPageSize(proposalResponse.data.pageSize || 20)
       } catch (err: any) {
-        console.error("Fetch Error:", {
-          message: err.message || "Unknown error",
-          response: err.response?.data || null,
-          status: err.response?.status || null,
-          url: err.response?.config?.url || "Unknown",
-        })
+        console.error("Fetch Error:", err)
         setError(err.response?.data?.message || "Failed to load proposals. Please try again.")
         setProposals([])
       } finally {
@@ -172,33 +161,73 @@ export default function VendorRequests() {
   }, [refreshKey, vendorId, router, currentPage, pageSize])
 
   const handleAction = async (id: string, action: "accept" | "reject") => {
-    const endpoint = action === "accept" ? "/api/order/create" : "/api/v1/market-proposal/reject"
+    const proposalObj = proposals.find(p => p.id === id)
+    if (!vendorId) {
+      setResponseMessage("Vendor not identified. Please log in again.")
+      setIsResponseDialogOpen(true)
+      return
+    }
+
+    const authToken = typeof window !== "undefined" ? localStorage.getItem("authToken") : null
+    const commonHeaders: Record<string, string> = { "Content-Type": "application/json", accept: "*/*" }
+    if (authToken) {
+      commonHeaders["Authorization"] = `Bearer ${authToken}`
+    }
+
     try {
-      const payload = { marketProposalId: id, vendorId }
-      const method = action === "accept" ? axiosInstance.post : axiosInstance.patch
-      const response = await method(endpoint, payload, {
-        headers: { "Content-Type": "application/json", accept: "*/*" },
-      })
-      console.log(`${action.charAt(0).toUpperCase() + action.slice(1)} Proposal Response:`, {
-        status: response.status,
-        data: response.data,
-        url: endpoint,
-        payload,
-      })
-      setResponseMessage(response.data.message || `${action.charAt(0).toUpperCase() + action.slice(1)}ed successfully`)
-      if (response.data.isSuccess) {
-        setProposals(proposals.filter((proposal) => proposal.id !== id)) // Remove immediately on success
-        setRefreshKey((prev) => prev + 1) // Trigger refresh with current pagination
+      if (!proposalObj) {
+        setResponseMessage("Proposal not found in state.")
+        setIsResponseDialogOpen(true)
+        return
+      }
+
+      if (action === "reject") {
+        const rejectPayload = {
+          marketProposalId: proposalObj.id,
+          vendorId,
+          marketHubId: proposalObj.marketHubId,
+        }
+        console.log("Reject payload", { rejectPayload, headers: commonHeaders })
+        const response = await axiosInstance.patch("/api/v1/market-proposal/reject", rejectPayload, { headers: commonHeaders })
+        console.log("Reject Proposal Response", { status: response.status, data: response.data })
+
+        setResponseMessage(response.data.message || "Rejected successfully")
+        if (response.data.isSuccess) {
+          setProposals(proposals.filter(p => p.id !== proposalObj.id))
+          setRefreshKey(prev => prev + 1)
+        }
+        setIsResponseDialogOpen(true)
+        setIsConfirmDialogOpen(false)
+        setPendingAction(null)
+        return
+      }
+
+      // ✅ Accept
+      const acceptPayload = {
+        marketProposalId: proposalObj.id,
+        vendorId,
+        marketHubId: proposalObj.marketHubId,
+        quantity: proposalObj.quantity,
+      }
+
+      console.log("Accept payload", { acceptPayload, headers: commonHeaders })
+      const resp = await axiosInstance.post("/api/order/create", acceptPayload, { headers: commonHeaders })
+      console.log("Accept Proposal Success", { status: resp.status, data: resp.data })
+
+      setResponseMessage(resp.data.message || "Accepted successfully")
+      if (resp.data.isSuccess) {
+        setProposals(proposals.filter(p => p.id !== proposalObj.id))
+        setRefreshKey(prev => prev + 1)
       }
       setIsResponseDialogOpen(true)
     } catch (err: any) {
-      console.error(`${action.charAt(0).toUpperCase() + action.slice(1)} Proposal Error:`, {
-        message: err.message || "Unknown error",
-        response: err.response?.data || null,
-        status: err.response?.status || null,
-        url: endpoint || "Unknown endpoint",
+      console.error("Action error", {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+        url: err.response?.config?.url,
       })
-      setResponseMessage(err.response?.data?.message || `Failed to ${action} proposal. Please try again.`)
+      setResponseMessage(err.response?.data?.message || err.message || "Action failed")
       setIsResponseDialogOpen(true)
     } finally {
       setIsConfirmDialogOpen(false)
@@ -246,7 +275,6 @@ export default function VendorRequests() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="p-6">
-        {/* Header */}
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div className="mb-8">
             <h1 className="text-3xl font-bold tracking-tight">Requests by Farmers</h1>
@@ -325,7 +353,6 @@ export default function VendorRequests() {
                 >
                   <div className="flex justify-between items-start">
                     <div className="space-y-2">
-                      {/* Farmer Name */}
                       <Dialog>
                         <DialogTrigger asChild>
                           <button
