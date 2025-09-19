@@ -1,9 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import axiosInstance from "@/lib/axiosInstance"
 import {
   XAxis,
   YAxis,
@@ -16,7 +19,7 @@ import {
   Bar,
   ReferenceLine,
 } from "recharts"
-import { TrendingUp, Calendar, DollarSign, ShoppingCart, Filter } from "lucide-react"
+import { TrendingUp, Calendar, DollarSign, ShoppingCart, Filter, Loader2 } from "lucide-react"
 
 // 6 months before and 6 months after current date
 const analyticsData = {
@@ -136,6 +139,98 @@ export default function VendorReports() {
     const futureData = currentPriceData.find((item) => item.type === "future")
     return futureData?.predicted || 0
   }
+
+  // API Price Predictions by Commodity
+  type PredictionPoint = { period: string; predicted: number; type: string }
+
+  const COMMODITIES: string[] = [
+    "Tomato Big(Nepali)", "Tomato Small(Local)", "Potato Red", "Potato White",
+    "Onion Dry (Indian)", "Carrot(Local)", "Cabbage(Local)", "Cauli Local",
+    "Raddish Red", "Raddish White(Local)", "Brinjal Long", "Brinjal Round",
+    "Cow pea(Long)", "Green Peas", "French Bean(Local)", "Soyabean Green",
+    "Bitter Gourd", "Bottle Gourd", "Pointed Gourd(Local)", "Snake Gourd",
+    "Smooth Gourd", "Sponge Gourd", "Pumpkin", "Squash(Long)", "Turnip", "Okara",
+    "Christophine", "Brd Leaf Mustard", "Spinach Leaf", "Cress Leaf",
+    "Mustard Leaf", "Fenugreek Leaf", "Onion Green", "Mushroom(Kanya)",
+    "Asparagus", "Neuro", "Brocauli", "Sugarbeet", "Drumstick", "Red Cabbbage",
+    "Lettuce", "Celery", "Parseley", "Fennel Leaf", "Mint", "Turnip A", "Tamarind",
+    "Bamboo Shoot", "Tofu", "Gundruk", "Apple(Jholey)", "Banana", "Lime",
+    "Pomegranate", "Mango(Maldah)", "Grapes(Green)", "Water Melon(Green)",
+    "Sweet Orange", "Pineapple", "Cucumber(Local)", "Jack Fruit",
+    "Papaya(Nepali)", "Sugarcane", "Ginger", "Chilli Dry", "Chilli Green",
+    "Capsicum", "Garlic Green", "Coriander Green", "Garlic Dry Chinese",
+    "Garlic Dry Nepali", "Clive Dry", "Clive Green", "Fish Fresh", "Arum", "Maize",
+    "Sweet Lime", "Guava", "Mombin", "Barela", "Lemon", "Sword Bean",
+    "Orange(Nepali)", "Bakula", "Yam", "Sweet Potato", "Mandarin", "Knolkhol",
+    "Cauli Terai", "Kinnow", "Strawberry", "Bauhania flower", "Pear(Local)",
+    "Litchi(Local)", "Musk Melon", "Tomato Small(Tunnel)", "Potato Red(Indian)",
+    "Mushroom(Button)", "Apple(Fuji)", "Cucumber(Hybrid)",
+    "Chilli Green(Bullet)", "Chilli Green(Machhe)", "Chilli Green(Akbare)",
+    "Fish Fresh(Rahu)", "Fish Fresh(Bachuwa)", "Fish Fresh(Chhadi)",
+    "Fish Fresh(Mungari)", "Raddish White(Hybrid)", "Cowpea(Short)",
+    "French Bean(Hybrid)", "French Bean(Rajma)", "Squash(Round)",
+    "Mango(Dushari)", "Water Melon(Dotted)", "Papaya(Indian)", "Litchi(Indian)",
+    "Cabbage", "Potato Red(Mude)", "Tomato Big(Indian)", "Pear(Chinese)",
+    "Tomato Small(Indian)", "Orange(Indian)", "Carrot(Terai)",
+    "Tomato Small(Terai)", "Onion Dry (Chinese)", "Cabbage(Terai)",
+    "Cauli Local(Jyapu)", "Pointed Gourd(Terai)", "Grapes(Black)", "Kiwi",
+    "Mango(Calcutte)", "Mango(Chousa)", "Sarifa", "Avocado", "Amla",
+  ]
+
+  const [selectedCommodity, setSelectedCommodity] = useState<string>(COMMODITIES[0])
+  const [commoditySearch, setCommoditySearch] = useState("")
+  const [predLoading, setPredLoading] = useState(false)
+  const [predError, setPredError] = useState<string | null>(null)
+  const [predictions, setPredictions] = useState<PredictionPoint[]>([])
+
+  const filteredCommodities = useMemo(
+    () => COMMODITIES.filter((c) => c.toLowerCase().includes(commoditySearch.toLowerCase())).slice(0, 200),
+    [COMMODITIES, commoditySearch]
+  )
+
+  const fetchPredictions = async (commodity: string) => {
+    try {
+      setPredLoading(true)
+      setPredError(null)
+      // API Endpoint to predict price
+      const url = `http://localhost:8000/predict/${encodeURIComponent(commodity)}`
+      const res = await axiosInstance.get(url, { headers: { accept: "*/*" } })
+      const data = Array.isArray(res.data) ? res.data : (res.data?.output || [])
+      setPredictions(data as PredictionPoint[])
+    } catch (err: any) {
+      console.error("Fetch Predictions Error", err)
+      setPredError(err.response?.data?.message || err.message || "Failed to fetch predictions")
+      setPredictions([])
+    } finally {
+      setPredLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchPredictions(selectedCommodity)
+  }, [selectedCommodity])
+
+  const splitIndex = useMemo(() => {
+    if (!predictions || predictions.length === 0) return 0
+    const futureIdx = predictions.findIndex((p: any) => String(p?.type ?? "").toLowerCase().includes("future") || String(p?.status ?? "").toLowerCase().includes("future") || String(p?.phase ?? "").toLowerCase().includes("future"))
+    if (futureIdx !== -1) return futureIdx
+    const presentIdx = predictions.findIndex((p: any) => ["present", "current"].includes(String(p?.type ?? "").toLowerCase()))
+    if (presentIdx !== -1) return presentIdx + 1
+    const futureBoolIdx = predictions.findIndex((p: any) => p?.isFuture === true || p?.future === true || p?.is_future === true)
+    if (futureBoolIdx !== -1) return futureBoolIdx
+    return predictions.length >= 8 ? Math.floor(predictions.length / 2) : predictions.length
+  }, [predictions])
+
+  const composedPredictions = useMemo(() => (
+    predictions.map((p, i) => ({
+      period: p.period,
+      predictedCurrent: i < splitIndex ? p.predicted : null,
+      predictedFuture: i >= splitIndex ? p.predicted : null,
+    }))
+  ), [predictions, splitIndex])
+
+  const hasCurrent = useMemo(() => composedPredictions.some(d => d.predictedCurrent != null), [composedPredictions])
+  const hasFuture = useMemo(() => composedPredictions.some(d => d.predictedFuture != null), [composedPredictions])
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -275,88 +370,116 @@ export default function VendorReports() {
           </CardContent>
         </Card>
 
-        {/* Price Predictions Chart */}
+        {/* Price Predictions (API) */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <TrendingUp className="h-5 w-5 text-blue-600" />
-                  Market Price Predictions by Product
+                  Price Predictions  by Product
                 </CardTitle>
-                <p className="text-sm text-gray-600">Historical and predicted market prices (Rs./kg)</p>
+                <p className="text-sm text-gray-600">Predicted prices returned by the API (Rs./kg)</p>
               </div>
               <div className="flex items-center gap-2">
                 <Filter className="h-4 w-4 text-gray-500" />
-                <Select value={selectedProduct} onValueChange={setSelectedProduct}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {products.map((product) => (
-                      <SelectItem key={product.value} value={product.value}>
-                        {product.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <Input
+                      value={commoditySearch}
+                      onChange={(e) => setCommoditySearch(e.target.value)}
+                      placeholder="Search commodity..."
+                      className="w-56"
+                    />
+                  </div>
+                  <Select value={selectedCommodity} onValueChange={setSelectedCommodity}>
+                    <SelectTrigger className="w-72">
+                      <SelectValue placeholder="Select commodity" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredCommodities.map((c) => (
+                        <SelectItem key={c} value={c}>
+                          {c}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={400}>
-              <LineChart data={currentPriceData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="period" />
-                <YAxis />
-                <Tooltip
-                  formatter={(value, name) => [
-                    `Rs. ${value}/kg`,
-                    name === "actual" ? "Actual Price" : "Predicted Price",
-                  ]}
-                />
-                <ReferenceLine x="Jan 2024" stroke="#ef4444" strokeDasharray="2 2" label="Current Month" />
-                <Line
-                  type="monotone"
-                  dataKey="actual"
-                  stroke="#f97316"
-                  strokeWidth={3}
-                  name="actual"
-                  dot={{ fill: "#f97316", strokeWidth: 2, r: 5 }}
-                  connectNulls={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="predicted"
-                  stroke="#3b82f6"
-                  strokeWidth={3}
-                  strokeDasharray="8 8"
-                  name="predicted"
-                  dot={{ fill: "#3b82f6", strokeWidth: 2, r: 5 }}
-                  connectNulls={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-            <div className="mt-4 grid grid-cols-3 gap-4">
-              <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
-                <p className="text-sm text-orange-700">
-                  <strong>Current Price:</strong> Rs. {getCurrentPrice()}/kg
-                </p>
+            {predError && (
+              <div className="p-3 mb-3 rounded-md bg-red-50 text-red-700 border border-red-200">
+                {predError}
               </div>
-              <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-sm text-blue-700">
-                  <strong>Next Month:</strong> Rs. {getNextMonthPrice()}/kg
-                </p>
+            )}
+            {predLoading ? (
+              <div className="h-[200px] flex items-center justify-center text-gray-600">
+                <Loader2 className="h-5 w-5 mr-2 animate-spin" /> Fetching predictions...
               </div>
-              <div className="p-3 bg-red-50 rounded-lg border border-red-200">
-                <p className="text-sm text-red-700">
-                  <strong>Price Increase:</strong> +
-                  {(((getNextMonthPrice() - getCurrentPrice()) / getCurrentPrice()) * 100).toFixed(1)}%
-                </p>
+            ) : predictions.length === 0 ? (
+              <div className="text-gray-600">No prediction data available.</div>
+            ) : (
+              <div>
+                {!hasCurrent && hasFuture && (
+                  <div className="mb-2 text-xs text-gray-600">
+                    Note: API returned only future predictions. No current/historical points were provided.
+                  </div>
+                )}
+                <ResponsiveContainer width="100%" height={400}>
+                  <LineChart data={composedPredictions}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="period" />
+                    <YAxis />
+                    <Tooltip formatter={(value, name) => [
+                      `Rs. ${Number(value).toFixed(2)}/kg`,
+                      name === "predictedFuture" ? "Future Price" : "Current/Actual Price",
+                    ]} />
+                    <Line
+                      type="monotone"
+                      dataKey="predictedCurrent"
+                      stroke="#f97316"
+                      strokeWidth={3}
+                      dot={{ fill: "#f97316", strokeWidth: 2, r: 4 }}
+                      name="predictedCurrent"
+                      connectNulls={false}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="predictedFuture"
+                      stroke="#3b82f6"
+                      strokeWidth={3}
+                      strokeDasharray="8 8"
+                      dot={{ fill: "#3b82f6", strokeWidth: 2, r: 4 }}
+                      name="predictedFuture"
+                      connectNulls={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <p className="text-sm text-blue-700">
+                      <strong>Selected:</strong> {selectedCommodity}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                    <p className="text-sm text-green-700">
+                      <strong>Min Predicted:</strong> Rs. {Math.min(...predictions.map(p => p.predicted)).toFixed(2)} /kg
+                    </p>
+                  </div>
+                  <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                    <p className="text-sm text-purple-700">
+                      <strong>Max Predicted:</strong> Rs. {Math.max(...predictions.map(p => p.predicted)).toFixed(2)} /kg
+                    </p>
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
+
+        
 
         {/* Demand Predictions Chart */}
         <Card>
