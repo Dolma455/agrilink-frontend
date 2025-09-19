@@ -103,25 +103,32 @@ export default function MarketHub() {
     try {
       setProductLoading(true)
       setProductError(null)
-      const response = await axiosInstance.get("/api/v1/product/all", {
-        headers: { accept: "*/*" },
-      })
-      console.log("Fetch Product List Response:", {
-        status: response.status,
-        data: response.data,
-        url: "/api/v1/product/all",
-        authToken: localStorage.getItem("authToken"),
-      })
-      setProductList(response.data.data || [])
-      console.log("productList after fetch:", response.data.data || [])
+      const aggregated: AddProduct[] = []
+      let page = 1
+      const size = 150
+      let totalPagesLocal = 1
+      do {
+        const response = await axiosInstance.get(`/api/v1/product/all?page=${page}&pageSize=${size}`, {
+          headers: { accept: "*/*" },
+        })
+        console.log("Fetch Product List Page Response:", {
+          status: response.status,
+          page,
+          dataCount: (response.data.data || response.data.output || []).length,
+          totalPages: response.data.totalPages,
+          url: `/api/v1/product/all?page=${page}&pageSize=${size}`,
+          authToken: localStorage.getItem("authToken"),
+        })
+        const pageData: AddProduct[] = response.data.data || response.data.output || []
+        aggregated.push(...pageData)
+        totalPagesLocal = response.data.totalPages || 1
+        page += 1
+      } while (page <= totalPagesLocal)
+      const dedup = Array.from(new Map(aggregated.map(p => [p.id, p])).values())
+      setProductList(dedup)
+      console.log("Total products aggregated:", dedup.length)
     } catch (err: any) {
-      console.error("Fetch Product List Error:", {
-        message: err.message,
-        response: err.response?.data,
-        status: err.response?.status,
-        url: "/api/v1/product/all",
-        authToken: localStorage.getItem("authToken"),
-      })
+      console.error("Fetch Product List Error:", err)
       setProductError(err.response?.data?.message || "Failed to load products. Please try again.")
     } finally {
       setProductLoading(false)
@@ -130,6 +137,7 @@ export default function MarketHub() {
 
   useEffect(() => {
     fetchProducts(currentPage, pageSize)
+
     fetchProductList()
   }, [currentPage, pageSize])
 
