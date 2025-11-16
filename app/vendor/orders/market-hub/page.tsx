@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -38,6 +38,7 @@ interface ApiResponse {
 }
 
 export default function MarketHub() {
+  const [vendorId, setVendorId] = useState<string>("")
   const [products, setProducts] = useState<MarketHubProduct[]>([])
   const [productList, setProductList] = useState<AddProduct[]>([])
   const [productLoading, setProductLoading] = useState(false)
@@ -49,7 +50,7 @@ export default function MarketHub() {
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [totalPages, setTotalPages] = useState(1)
-  const vendorId = localStorage.getItem("userId") ?? ""
+  const [activeTab, setActiveTab] = useState<"Recent" | "All">("Recent") // tab state
 
   const statusOptions = [
     { value: "all", label: "All Status" },
@@ -68,31 +69,30 @@ export default function MarketHub() {
     { value: "Stationery", label: "Stationery" },
   ]
 
+  // Load vendorId from localStorage on client
+  useEffect(() => {
+    const id = localStorage.getItem("userId") ?? ""
+    setVendorId(id)
+  }, [])
+
+  // Fetch products
   const fetchProducts = async (page: number = 1, size: number = 10) => {
+    if (!vendorId) return
     try {
       setProductLoading(true)
       setProductError(null)
-      const response = await axiosInstance.get<ApiResponse>(`/api/v1/marketHub/vendor?vendorId=${vendorId}&page=${page}&pageSize=${size}`, {
-        headers: { accept: "*/*" },
-      })
-      console.log("Fetch MarketHub Products Response:", {
-        status: response.status,
-        data: response.data,
-        url: `/api/v1/marketHub/vendor?vendorId=${vendorId}&page=${page}&pageSize=${size}`,
-        authToken: localStorage.getItem("authToken"),
-      })
-      setProducts(response.data.data || [])
+      const response = await axiosInstance.get<ApiResponse>(
+        `/api/v1/marketHub/vendor?vendorId=${vendorId}&page=${page}&pageSize=${size}`
+      )
+      const data = response.data.data || []
+      // sort recent first
+      const sortedRecent = [...data].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      setProducts(sortedRecent)
       setTotalPages(response.data.totalPages || 1)
       setCurrentPage(response.data.currentPage || 1)
       setPageSize(response.data.pageSize || 10)
     } catch (err: any) {
-      console.error("Fetch MarketHub Products Error:", {
-        message: err.message,
-        response: err.response?.data,
-        status: err.response?.status,
-        url: `/api/v1/marketHub/vendor?vendorId=${vendorId}&page=${page}&pageSize=${size}`,
-        authToken: localStorage.getItem("authToken"),
-      })
+      console.error("Fetch MarketHub Products Error:", err)
       setProductError(err.response?.data?.message || "Failed to load orders. Please try again.")
     } finally {
       setProductLoading(false)
@@ -102,23 +102,12 @@ export default function MarketHub() {
   const fetchProductList = async () => {
     try {
       setProductLoading(true)
-      setProductError(null)
       const aggregated: AddProduct[] = []
       let page = 1
       const size = 150
       let totalPagesLocal = 1
       do {
-        const response = await axiosInstance.get(`/api/v1/product/all?page=${page}&pageSize=${size}`, {
-          headers: { accept: "*/*" },
-        })
-        console.log("Fetch Product List Page Response:", {
-          status: response.status,
-          page,
-          dataCount: (response.data.data || response.data.output || []).length,
-          totalPages: response.data.totalPages,
-          url: `/api/v1/product/all?page=${page}&pageSize=${size}`,
-          authToken: localStorage.getItem("authToken"),
-        })
+        const response = await axiosInstance.get(`/api/v1/product/all?page=${page}&pageSize=${size}`)
         const pageData: AddProduct[] = response.data.data || response.data.output || []
         aggregated.push(...pageData)
         totalPagesLocal = response.data.totalPages || 1
@@ -126,7 +115,6 @@ export default function MarketHub() {
       } while (page <= totalPagesLocal)
       const dedup = Array.from(new Map(aggregated.map(p => [p.id, p])).values())
       setProductList(dedup)
-      console.log("Total products aggregated:", dedup.length)
     } catch (err: any) {
       console.error("Fetch Product List Error:", err)
       setProductError(err.response?.data?.message || "Failed to load products. Please try again.")
@@ -136,10 +124,11 @@ export default function MarketHub() {
   }
 
   useEffect(() => {
-    fetchProducts(currentPage, pageSize)
-
-    fetchProductList()
-  }, [currentPage, pageSize])
+    if (vendorId) {
+      fetchProducts(currentPage, pageSize)
+      fetchProductList()
+    }
+  }, [vendorId, currentPage, pageSize])
 
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= totalPages) {
@@ -147,13 +136,24 @@ export default function MarketHub() {
     }
   }
 
-  const filteredProducts = products.filter((product) => {
-    const matchesSearch = product.productName.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === "all" || 
-      (statusFilter === "Low Stock" ? product.quantity > 0 && product.quantity < 20 : product.status === statusFilter)
-    const matchesCategory = categoryFilter === "all" || productList.find(p => p.id === product.productId)?.categoryName === categoryFilter
-    return matchesSearch && matchesStatus && matchesCategory
-  })
+  const productMap = useMemo(() => new Map(productList.map(p => [p.id, p.categoryName])), [productList])
+
+  // Filter products
+  const filteredProducts = useMemo(() => {
+    const list = products.filter(product => {
+      const matchesSearch = product.productName.toLowerCase().includes(searchTerm.toLowerCase())
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "Low Stock" ? product.quantity > 0 && product.quantity < 20 : product.status === statusFilter)
+      const matchesCategory = categoryFilter === "all" || productMap.get(product.productId) === categoryFilter
+      return matchesSearch && matchesStatus && matchesCategory
+    })
+    if (activeTab === "Recent") {
+      // sort recent first
+      return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    }
+    return list
+  }, [products, searchTerm, statusFilter, categoryFilter, productMap, activeTab])
 
   if (productError) return (
     <div className="min-h-screen bg-gray-50/50 p-4 md:p-6 lg:p-8">
@@ -171,6 +171,7 @@ export default function MarketHub() {
   return (
     <div className="min-h-screen bg-gray-50/50 p-4 md:p-6 lg:p-8">
       <div className="space-y-6">
+        {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">My Orders</h1>
@@ -185,6 +186,20 @@ export default function MarketHub() {
           </Button>
         </div>
 
+        {/* Tabs for Recent / All */}
+        <div className="flex gap-4 border-b border-gray-200">
+          {["Recent", "All"].map(tab => (
+            <button
+              key={tab}
+              className={`px-4 py-2 font-medium ${activeTab === tab ? "border-b-2 border-orange-600 text-orange-600" : "text-gray-500"}`}
+              onClick={() => setActiveTab(tab as "Recent" | "All")}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+
+        {/* Filters & Search */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -211,11 +226,7 @@ export default function MarketHub() {
                     <SelectValue placeholder="All Status" />
                   </SelectTrigger>
                   <SelectContent>
-                    {statusOptions.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
+                    {statusOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -225,11 +236,7 @@ export default function MarketHub() {
                     <SelectValue placeholder="All Categories" />
                   </SelectTrigger>
                   <SelectContent>
-                    {categoryOptions.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
+                    {categoryOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -250,16 +257,18 @@ export default function MarketHub() {
           </CardContent>
         </Card>
 
+        {/* Product List */}
         <MarketHubCardList
           products={filteredProducts}
           productList={productList}
           isLoading={productLoading}
-          onRefresh={() => fetchProducts(currentPage, pageSize)}
+          onRefresh={() => { fetchProducts(currentPage, pageSize); fetchProductList(); }}
           currentPage={currentPage}
           totalPages={totalPages}
           onPageChange={handlePageChange}
         />
 
+        {/* Place Order Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="max-w-md">
             <DialogHeader>
