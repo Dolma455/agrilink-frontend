@@ -15,11 +15,12 @@ const navigation = [
     icon: Home,
   },
   {
-    name: "Products",
+    name: "Inventory",
     href: "/vendor/products",
     icon: Truck,
     children: [
-      { name: "All Products", href: "/vendor/products" },
+      { name: "All Inventory", href: "/vendor/products" },
+      {name:"Sales History", href:"/vendor/products/sales-history" },
       { name: "Trending Products", href: "/vendor/products/trending" },
     ]
   },
