@@ -14,6 +14,12 @@ const navigation = [
     href: "/vendor/dashboard",
     icon: Home,
   },
+
+  {
+    name:"Revenue",
+    href:"/vendor/revenue",
+    icon: BarChart3,
+  },
   {
     name: "Inventory",
     href: "/vendor/products",
