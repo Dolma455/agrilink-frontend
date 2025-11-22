@@ -23,6 +23,11 @@ const navigation: NavItem[] = [
     icon: Home,
   },
   {
+    name: "Revenue",
+    href: "/farmer/revenue",
+    icon: BarChart3,
+  },
+  {
     name: "Order Management",
     href: "/farmer/orders",
     icon: ShoppingCart,
