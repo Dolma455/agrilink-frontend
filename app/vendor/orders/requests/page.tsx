@@ -6,64 +6,26 @@ import { Card } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Calendar, MapPin, User, Mail, Phone, AlertTriangle } from "lucide-react"
 import axiosInstance from "@/lib/axiosInstance"
-import { useRouter } from "next/navigation"
-
-interface MarketHub {
-  id: string
-  vendorId: string
-  productId: string
-  productName: string
-  quantity: number
-  requiredDeliveryDate: string
-  location: string
-  priceRangeMin: number
-  priceRangeMax: number
-  additionalInfo: string
-  status: string
-  createdAt: string
-}
 
 interface Proposal {
+  marketHubId: string
   id: string
   offerPricePerUnit: number
+  deliveryCharge: number
   status: string
   proposedAt: string
-  deliveryCharge: number
   farmerId: string
-  farmer: string
-  marketHubId: string
-  requiredDeliveryDate: string
-  location: string
-  quantity: number
-  priceRangeMin: number
-  priceRangeMax: number
-  marketHubStatus: string
-  productId: string
+  farmerName: string
   productName: string
-  productImageUrl?: string
+  quantity: number
   unitName: string
+  location: string
+  requiredDeliveryDate: string
+  productImageUrl?: string
   email?: string
   phone?: string
   address?: string
   farmSize?: string
-}
-
-interface FarmerDetails {
-  id: string
-  email: string
-  phone: string
-  address: string
-  farmSize: string
-}
-
-interface ApiResponse {
-  isSuccess: boolean
-  message: string | null
-  data: Proposal[]
-  totalCount: number
-  pageSize: number
-  currentPage: number
-  totalPages: number
 }
 
 export default function VendorRequests() {
@@ -71,243 +33,103 @@ export default function VendorRequests() {
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [refreshKey, setRefreshKey] = useState(0)
-  const [responseMessage, setResponseMessage] = useState<string | null>(null)
-  const [isResponseDialogOpen, setIsResponseDialogOpen] = useState(false)
-  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false)
+  const [responseMessage, setResponseMessage] = useState("")
+  const [isResponseOpen, setIsResponseOpen] = useState(false)
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false)
   const [pendingAction, setPendingAction] = useState<{ id: string; action: "accept" | "reject" } | null>(null)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [pageSize, setPageSize] = useState(20)
-  const [totalPages, setTotalPages] = useState(1)
-  const router = useRouter()
-  const [vendorId, setVendorId] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const id = localStorage.getItem("userId")
-        setVendorId(id)
-      } catch (e) {
-        console.warn("Unable to access localStorage for vendorId", e)
-        setVendorId("")
-      }
-    }
-  }, [])
+  const vendorId = typeof window !== "undefined" ? localStorage.getItem("userId") : null
 
-  useEffect(() => {
-    if (vendorId === null) return
-
-    const fetchData = async (page: number = 1, size: number = 20) => {
-      if (!vendorId) {
-        setError("User not logged in. Please log in to view proposals.")
-        router.push("/login")
-        return
-      }
-
-      setIsLoading(true)
-      setError(null)
-      try {
-        const farmerResponse = await axiosInstance.get("/api/v1/user/all", {
-          headers: { accept: "*/*" },
-        })
-        const farmerDetails: { [farmerId: string]: FarmerDetails } = (farmerResponse.data.data || []).reduce(
-          (acc: { [key: string]: FarmerDetails }, farmer: FarmerDetails) => ({
-            ...acc,
-            [farmer.id]: farmer,
-          }),
-          {}
-        )
-
-        const marketHubResponse = await axiosInstance.get(`/api/v1/marketHub/vendor?vendorId=${vendorId}`)
-        const marketHubs: MarketHub[] = marketHubResponse.data.data || []
-        const vendorMarketHubIds = marketHubs.map((hub) => hub.id)
-
-        const proposalResponse = await axiosInstance.get<ApiResponse>("/api/v1/market-proposal/get-proposals", {
-          params: { page, pageSize: size },
-        })
-
-        const allProposals = proposalResponse.data.data || []
-        const vendorProposals = allProposals.filter(
-          (proposal: Proposal) =>
-            vendorMarketHubIds.includes(proposal.marketHubId) &&
-            proposal.status !== "Accepted" &&
-            proposal.status !== "Rejected"
-        )
-
-        const pendingProposals = vendorProposals.map((proposal: Proposal) => ({
-          ...proposal,
-          ...farmerDetails[proposal.farmerId] || {
-            email: "unknown@example.com",
-            phone: "+977-000-000-0000",
-            address: "Unknown Address",
-            farmSize: "Unknown",
-          },
-        }))
-
-        setProposals(pendingProposals)
-        setTotalPages(proposalResponse.data.totalPages || 1)
-        setCurrentPage(proposalResponse.data.currentPage || 1)
-        setPageSize(proposalResponse.data.pageSize || 20)
-      } catch (err: any) {
-        console.error("Fetch Error:", err)
-        setError(err.response?.data?.message || "Failed to load proposals. Please try again.")
-        setProposals([])
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchData(currentPage, pageSize)
-  }, [refreshKey, vendorId, router, currentPage, pageSize])
-
-  const handleAction = async (id: string, action: "accept" | "reject") => {
-    const proposalObj = proposals.find(p => p.id === id)
+  // Fetch only vendor's proposals using the correct endpoint
+  const fetchProposals = async () => {
     if (!vendorId) {
-      setResponseMessage("Vendor not identified. Please log in again.")
-      setIsResponseDialogOpen(true)
+      setError("Please log in to view proposals")
+      setIsLoading(false)
       return
     }
 
-    const authToken = typeof window !== "undefined" ? localStorage.getItem("authToken") : null
-    const commonHeaders: Record<string, string> = { "Content-Type": "application/json", accept: "*/*" }
-    if (authToken) {
-      commonHeaders["Authorization"] = `Bearer ${authToken}`
-    }
-
+    setIsLoading(true)
     try {
-      if (!proposalObj) {
-        setResponseMessage("Proposal not found in state.")
-        setIsResponseDialogOpen(true)
-        return
-      }
-
-      if (action === "reject") {
-        const rejectPayload = {
-          marketProposalId: proposalObj.id,
-          vendorId,
-          marketHubId: proposalObj.marketHubId,
-        }
-        console.log("Reject payload", { rejectPayload, headers: commonHeaders })
-        const response = await axiosInstance.patch("/api/v1/market-proposal/reject", rejectPayload, { headers: commonHeaders })
-        console.log("Reject Proposal Response", { status: response.status, data: response.data })
-
-        setResponseMessage(response.data.message || "Rejected successfully")
-        if (response.data.isSuccess) {
-          setProposals(proposals.filter(p => p.id !== proposalObj.id))
-          setRefreshKey(prev => prev + 1)
-        }
-        setIsResponseDialogOpen(true)
-        setIsConfirmDialogOpen(false)
-        setPendingAction(null)
-        return
-      }
-
-      // ✅ Accept
-      const acceptPayload = {
-        marketProposalId: proposalObj.id,
-        vendorId,
-        marketHubId: proposalObj.marketHubId,
-        quantity: proposalObj.quantity,
-      }
-
-      console.log("Accept payload", { acceptPayload, headers: commonHeaders })
-      const resp = await axiosInstance.post("/api/order/create", acceptPayload, { headers: commonHeaders })
-      console.log("Accept Proposal Success", { status: resp.status, data: resp.data })
-
-      setResponseMessage(resp.data.message || "Accepted successfully")
-      if (resp.data.isSuccess) {
-        setProposals(proposals.filter(p => p.id !== proposalObj.id))
-        setRefreshKey(prev => prev + 1)
-      }
-      setIsResponseDialogOpen(true)
-    } catch (err: any) {
-      console.error("Action error", {
-        message: err.message,
-        response: err.response?.data,
-        status: err.response?.status,
-        url: err.response?.config?.url,
+      const res = await axiosInstance.get("/api/v1/market-proposal/get-all-proposals", {
+        params: { vendorId }  // This is the key — same as farmer side but with vendorId
       })
-      setResponseMessage(err.response?.data?.message || err.message || "Action failed")
-      setIsResponseDialogOpen(true)
+
+      const data = res.data.data || []
+      // Filter only pending proposals
+      const pending = data.filter((p: any) => 
+        p.status !== "Accepted" && p.status !== "Rejected"
+      )
+      setProposals(pending)
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Failed to load proposals")
+      console.error(err)
     } finally {
-      setIsConfirmDialogOpen(false)
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchProposals()
+  }, [vendorId])
+
+  const handleAction = async (id: string, action: "accept" | "reject") => {
+    try {
+      const proposal = proposals.find(p => p.id === id)
+      if (!proposal) return
+
+      if (action === "accept") {
+        await axiosInstance.post("/api/order/create", {
+          marketProposalId: id,
+          vendorId,
+          marketHubId: proposal.marketHubId || proposal.id,
+          quantity: proposal.quantity,
+        })
+        setResponseMessage("Proposal accepted successfully!")
+      } else {
+        await axiosInstance.patch("/api/v1/market-proposal/reject", {
+          marketProposalId: id,
+          vendorId,
+        })
+        setResponseMessage("Proposal rejected")
+      }
+
+      // Remove from list
+      setProposals(prev => prev.filter(p => p.id !== id))
+      setIsResponseOpen(true)
+    } catch (err: any) {
+      setResponseMessage(err.response?.data?.message || "Action failed")
+      setIsResponseOpen(true)
+    } finally {
+      setIsConfirmOpen(false)
       setPendingAction(null)
     }
   }
 
-  const openConfirmDialog = (id: string, action: "accept" | "reject") => {
-    setPendingAction({ id, action })
-    setIsConfirmDialogOpen(true)
-  }
-
-  const handlePageChange = (newPage: number) => {
-    if (newPage >= 1 && newPage <= totalPages) {
-      setCurrentPage(newPage)
-    }
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="text-center py-12">
-          <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Error</h3>
-          <p className="text-red-500">{error}</p>
-          <Button
-            variant="outline"
-            onClick={() => {
-              setError(null)
-              setRefreshKey((prev) => prev + 1)
-            }}
-            className="mt-4"
-          >
-            Retry
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
-  if (isLoading) {
-    return <div className="min-h-screen bg-gray-50 p-6">Loading farmer proposals...</div>
-  }
+  if (isLoading) return <div className="min-h-screen bg-gray-50 p-6">Loading proposals...</div>
+  if (error) return <div className="min-h-screen bg-gray-50 p-6 text-red-600 text-center">{error}</div>
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="p-6">
-        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold tracking-tight">Requests by Farmers</h1>
-            <p className="text-muted-foreground">These are the proposals sent by farmers</p>
-          </div>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold tracking-tight">Requests by Farmers</h1>
+          <p className="text-muted-foreground">These are the proposals sent by farmers</p>
         </div>
 
         {/* Confirmation Dialog */}
-        <Dialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
+        <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Confirm {pendingAction?.action === "accept" ? "Accept" : "Reject"}</DialogTitle>
+              <DialogTitle>Confirm Action</DialogTitle>
               <DialogDescription>
-                Are you sure you want to {pendingAction?.action === "accept" ? "accept" : "reject"} this proposal?
+                Are you sure you want to {pendingAction?.action} this proposal?
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
+              <Button variant="outline" onClick={() => setIsConfirmOpen(false)}>Cancel</Button>
               <Button
-                variant="outline"
-                onClick={() => {
-                  setIsConfirmDialogOpen(false)
-                  setPendingAction(null)
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                className={pendingAction?.action === "accept" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}
-                onClick={() => {
-                  if (pendingAction) {
-                    handleAction(pendingAction.id, pendingAction.action)
-                  }
-                }}
+                className={pendingAction?.action === "accept" ? "bg-green-600" : "bg-red-600"}
+                onClick={() => pendingAction && handleAction(pendingAction.id, pendingAction.action)}
               >
                 {pendingAction?.action === "accept" ? "Accept" : "Reject"}
               </Button>
@@ -316,156 +138,89 @@ export default function VendorRequests() {
         </Dialog>
 
         {/* Response Dialog */}
-        <Dialog open={isResponseDialogOpen} onOpenChange={setIsResponseDialogOpen}>
+        <Dialog open={isResponseOpen} onOpenChange={setIsResponseOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Action Result</DialogTitle>
+              <DialogTitle>Result</DialogTitle>
               <DialogDescription>{responseMessage}</DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsResponseDialogOpen(false)
-                  setResponseMessage(null)
-                }}
-              >
-                OK
-              </Button>
+              <Button onClick={() => setIsResponseOpen(false)}>OK</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* Proposals List */}
         <div className="space-y-4">
           {proposals.length === 0 ? (
             <div className="text-center py-12">
               <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No farmer proposals found</h3>
-              <p className="text-gray-500">No pending proposals available at the moment.</p>
+              <p className="text-xl text-gray-600">No pending proposals</p>
             </div>
           ) : (
-            <>
-              {proposals.map((proposal, index) => (
-                <Card
-                  key={proposal.id}
-                  className={`p-4 border rounded-md ${index % 2 === 0 ? "bg-red-50" : "bg-green-50"} shadow-sm hover:shadow-md transition-shadow duration-200`}
-                >
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-2">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <button
-                            onClick={() => setSelectedProposal(proposal)}
-                            className="text-lg font-semibold text-blue-600 hover:underline flex items-center gap-2"
-                          >
-                            <User className="h-5 w-5" />
-                            {proposal.farmer}
-                          </button>
-                        </DialogTrigger>
-                        {selectedProposal?.id === proposal.id && (
-                          <DialogContent className="sm:max-w-md bg-white rounded-xl shadow-lg">
-                            <DialogHeader>
-                              <DialogTitle className="text-2xl font-semibold text-gray-800">
-                                {selectedProposal.farmer}'s Profile
-                              </DialogTitle>
-                            </DialogHeader>
-                            <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
-                              <div className="flex items-start gap-3 p-3 bg-white rounded-lg shadow-sm">
-                                <User className="h-6 w-6 text-blue-500 mt-1" />
-                                <div>
-                                  <p className="text-sm font-medium text-gray-500">Name</p>
-                                  <p className="text-gray-800 font-medium">{selectedProposal.farmer}</p>
-                                </div>
-                              </div>
-                              <div className="flex items-start gap-3 p-3 bg-white rounded-lg shadow-sm">
-                                <Mail className="h-6 w-6 text-blue-500 mt-1" />
-                                <div>
-                                  <p className="text-sm font-medium text-gray-500">Email</p>
-                                  <p className="text-gray-800">{selectedProposal.email}</p>
-                                </div>
-                              </div>
-                              <div className="flex items-start gap-3 p-3 bg-white rounded-lg shadow-sm">
-                                <Phone className="h-6 w-6 text-blue-500 mt-1" />
-                                <div>
-                                  <p className="text-sm font-medium text-gray-500">Phone</p>
-                                  <p className="text-gray-800">{selectedProposal.phone}</p>
-                                </div>
-                              </div>
-                              <div className="flex items-start gap-3 p-3 bg-white rounded-lg shadow-sm">
-                                <MapPin className="h-6 w-6 text-blue-500 mt-1" />
-                                <div>
-                                  <p className="text-sm font-medium text-gray-500">Address</p>
-                                  <p className="text-gray-800">{selectedProposal.address}</p>
-                                </div>
-                              </div>
-                              <div className="flex items-start gap-3 p-3 bg-white rounded-lg shadow-sm">
-                                <MapPin className="h-6 w-6 text-blue-500 mt-1" />
-                                <div>
-                                  <p className="text-sm font-medium text-gray-500">Farm Size</p>
-                                  <p className="text-gray-800">{selectedProposal.farmSize}</p>
-                                </div>
-                              </div>
-                            </div>
-                          </DialogContent>
-                        )}
-                      </Dialog>
+            proposals.map((p, i) => (
+              <Card key={p.id} className={`p-4 ${i % 2 === 0 ? "bg-red-50" : "bg-green-50"}`}>
+                <div className="flex justify-between items-start">
+                  <div className="space-y-2">
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <button
+                          onClick={() => setSelectedProposal(p)}
+                          className="text-lg font-semibold text-blue-600 hover:underline flex items-center gap-2"
+                        >
+                          <User className="h-5 w-5" />
+                          {p.farmerName}
+                        </button>
+                      </DialogTrigger>
+                      {selectedProposal?.id === p.id && (
+                        <DialogContent className="sm:max-w-md">
+                          <DialogHeader>
+                            <DialogTitle className="text-2xl">{p.farmerName}'s Profile</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                            <div className="flex gap-3"><Mail className="h-6 w-6 text-blue-500" /> <div><strong>Email:</strong> {p.email}</div></div>
+                            <div className="flex gap-3"><Phone className="h-6 w-6 text-blue-500" /> <div><strong>Phone:</strong> {p.phone}</div></div>
+                            <div className="flex gap-3"><MapPin className="h-6 w-6 text-blue-500" /> <div><strong>Address:</strong> {p.address}</div></div>
+                            <div className="flex gap-3"><MapPin className="h-6 w-6 text-blue-500" /> <div><strong>Farm Size:</strong> {p.farmSize}</div></div>
+                          </div>
+                        </DialogContent>
+                      )}
+                    </Dialog>
 
-                      <div className="text-sm font-medium text-gray-700">{proposal.productName}</div>
-                      <div className="text-sm flex gap-4">
-                        <span className="text-gray-600">{proposal.quantity} {proposal.unitName}</span>
-                        <span className="text-green-600 font-semibold">Rs. {proposal.offerPricePerUnit}/unit</span>
-                      </div>
-
-                      <div className="text-sm flex gap-4 text-gray-500">
-                        <span className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4" />
-                          {new Date(proposal.proposedAt).toLocaleDateString()}
-                        </span>
-                        <span className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4" />
-                          {proposal.location}
-                        </span>
-                      </div>
+                    <div className="font-medium">{p.productName}</div>
+                    <div className="text-sm flex gap-4">
+                      <span>{p.quantity} {p.unitName}</span>
+                      <span className="font-bold text-green-600">Rs. {p.offerPricePerUnit}/unit</span>
+                      {p.deliveryCharge > 0 && <span className="text-gray-600">+ ₹{p.deliveryCharge} delivery</span>}
                     </div>
-
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center mt-4 sm:mt-0">
-                      <Button
-                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2"
-                        onClick={() => openConfirmDialog(proposal.id, "accept")}
-                      >
-                        Accept
-                      </Button>
-                      <Button
-                        className="bg-red-600 hover:bg-red-700 text-white px-4 py-2"
-                        onClick={() => openConfirmDialog(proposal.id, "reject")}
-                      >
-                        Reject
-                      </Button>
+                    <div className="text-sm text-gray-500 flex gap-4">
+                      <span className="flex items-center gap-1"><Calendar className="h-4 w-4" /> {new Date(p.proposedAt).toLocaleDateString()}</span>
+                      <span className="flex items-center gap-1"><MapPin className="h-4 w-4" /> {p.location}</span>
                     </div>
                   </div>
-                </Card>
-              ))}
-              <div className="flex justify-between items-center mt-4">
-                <Button
-                  disabled={currentPage === 1}
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  variant="outline"
-                >
-                  Previous
-                </Button>
-                <span>
-                  Page {currentPage} of {totalPages}
-                </span>
-                <Button
-                  disabled={currentPage === totalPages}
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  variant="outline"
-                >
-                  Next
-                </Button>
-              </div>
-            </>
+
+                  <div className="flex gap-2 mt-4 sm:mt-0">
+                    <Button
+                      className="bg-green-600 hover:bg-green-700"
+                      onClick={() => {
+                        setPendingAction({ id: p.id, action: "accept" })
+                        setIsConfirmOpen(true)
+                      }}
+                    >
+                      Accept
+                    </Button>
+                    <Button
+                      className="bg-red-600 hover:bg-red-700"
+                      onClick={() => {
+                        setPendingAction({ id: p.id, action: "reject" })
+                        setIsConfirmOpen(true)
+                      }}
+                    >
+                      Reject
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            ))
           )}
         </div>
       </div>
