@@ -10,31 +10,31 @@ import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, Search, Filter 
 import axiosInstance from "@/lib/axiosInstance"
 import { format } from "date-fns"
 
-interface RevenueItem {
-  orderId: string
+interface SaleItem {
+  saleId: string
+  productId: string
   productName: string
-  productImageUrl: string
-  quantity: number
-  unitName: string
-  finalPricePerUnit: number
-  totalAmount: number
-  vendorName: string
-  completedAt: string
+  productImageUrl?: string
+  quantitySold: number
+  price: number
+  totalSaleAmount: number
+  soldAt: string
 }
 
-interface RevenueResponse {
-  data: RevenueItem[]
+interface VendorRevenueResponse {
+  data: SaleItem[]
   totalCount: number
   pageSize: number
   currentPage: number
   totalPages: number
   totalRevenue: number
-  totalOrders: number
+  totalExpenses: number
   netProfit: number
+  totalOrders: number
 }
 
-export default function FarmerRevenuePage() {
-  const [response, setResponse] = useState<RevenueResponse | null>(null)
+export default function VendorRevenuePage() {
+  const [response, setResponse] = useState<VendorRevenueResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [fromDate, setFromDate] = useState("")
@@ -42,40 +42,46 @@ export default function FarmerRevenuePage() {
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 10
 
-  const farmerId = typeof window !== "undefined" ? localStorage.getItem("userId") : null
+  const vendorId = typeof window !== "undefined" ? localStorage.getItem("userId") : null
 
   const fetchRevenue = async (page: number = 1) => {
-    if (!farmerId) return
+    if (!vendorId) return
 
     setLoading(true)
     try {
-      const params: Record<string, any> = { page, pageSize }
+      const params: Record<string, any> = {
+        page,
+        pageSize,
+      }
 
+      // Only add filters if they have value
       if (searchTerm.trim()) params.search = searchTerm.trim()
       if (fromDate) params.fromDate = fromDate
       if (toDate) params.toDate = toDate
 
-      const res = await axiosInstance.get(`/api/v1/revenue/farmer/${farmerId}`, { params })
+      const res = await axiosInstance.get(`/api/v1/revenue/vendor/${vendorId}`, { params })
       setResponse(res.data)
       setCurrentPage(res.data.currentPage || 1)
     } catch (err: any) {
-      console.error("Failed to fetch revenue:", err.response?.data || err)
+      console.error("Failed to fetch vendor revenue:", err.response?.data || err.message)
+      setResponse(null)
     } finally {
       setLoading(false)
     }
   }
 
-  // Initial load + page change
+  // Load on mount + page change
   useEffect(() => {
     fetchRevenue(currentPage)
-  }, [currentPage, farmerId])
+  }, [currentPage, vendorId])
 
-  // Debounced filter change (search + dates)
+  // Debounced search + filter change
   useEffect(() => {
     const timer = setTimeout(() => {
       setCurrentPage(1)
       fetchRevenue(1)
     }, 500)
+
     return () => clearTimeout(timer)
   }, [searchTerm, fromDate, toDate])
 
@@ -85,8 +91,8 @@ export default function FarmerRevenuePage() {
   if (loading && !response) {
     return (
       <div className="p-6">
-        <div className="text-center py-12">
-          <p className="text-xl text-muted-foreground">Loading revenue...</p>
+        <div className="text-center py-20">
+          <p className="text-xl text-muted-foreground">Loading your sales revenue...</p>
         </div>
       </div>
     )
@@ -98,7 +104,7 @@ export default function FarmerRevenuePage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">My Revenue</h1>
-          <p className="text-muted-foreground">Track all your earnings from completed orders</p>
+          <p className="text-muted-foreground">Track all your sales and earnings</p>
         </div>
       </div>
 
@@ -113,54 +119,57 @@ export default function FarmerRevenuePage() {
             <div className="text-3xl font-bold">
               ₹{response?.totalRevenue.toLocaleString("en-IN", { maximumFractionDigits: 2 }) || "0"}
             </div>
-            <p className="text-xs opacity-90">All time earnings</p>
+            <p className="text-xs opacity-90">From all sales</p>
           </CardContent>
         </Card>
 
         <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
-            <ShoppingBag className="h-5 w-5 opacity-90" />
+            <ShoppingBag className ="h-5 w-5 opacity-90" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{response?.totalOrders || 0}</div>
-            <p className="text-xs opacity-90">Completed</p>
+            <p className="text-xs opacity-90">Completed sales</p>
           </CardContent>
         </Card>
 
         <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Net Profit</CardTitle>
+            <CardTitle className ="text-sm font-medium">Net Profit</CardTitle>
             <TrendingUp className="h-5 w-5 opacity-90" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
               ₹{response?.netProfit.toLocaleString("en-IN", { maximumFractionDigits: 2 }) || "0"}
             </div>
-            <p className="text-xs opacity-90">After deductions</p>
+            <p className="text-xs opacity-90">After expenses</p>
           </CardContent>
         </Card>
 
         <Card className="bg-gradient-to-br from-orange-500 to-red-600 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg. Order Value</CardTitle>
+            <CardTitle className="text-sm font-medium">Avg. Sale Value</CardTitle>
             <Package className="h-5 w-5 opacity-90" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-              ₹{response && response.totalOrders > 0 ? Math.round(response.totalRevenue / response.totalOrders) : 0}
+              ₹
+              {response && response.totalOrders > 0
+                ? Math.round(response.totalRevenue / response.totalOrders)
+                : 0}
             </div>
-            <p className="text-xs opacity-90">Per order</p>
+            <p className="text-xs opacity-90">Per sale</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Search + Date Filter Card (Same as Vendor) */}
+      {/* Search + Date Filter */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Filter className="h-5 w-5" />
-            Filter Revenue
+            Filter Sales
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -168,14 +177,24 @@ export default function FarmerRevenuePage() {
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search product or vendor..."
+                placeholder="Search product name..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
             </div>
-            <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
-            <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+            <Input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="w-full"
+            />
+            <Input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="w-full"
+            />
           </div>
           <div className="mt-4 flex justify-end">
             <Button
@@ -193,12 +212,12 @@ export default function FarmerRevenuePage() {
         </CardContent>
       </Card>
 
-      {/* Revenue Table */}
+      {/* Sales Table - 100% same as Farmer */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl">Revenue Details</CardTitle>
+          <CardTitle className="text-xl">Sales Details</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Showing {items.length} of {response?.totalCount || 0} orders
+            Showing {items.length} of {response?.totalCount || 0} sales
           </p>
         </CardHeader>
         <CardContent>
@@ -208,8 +227,7 @@ export default function FarmerRevenuePage() {
                 <TableRow>
                   <TableHead className="w-20">Image</TableHead>
                   <TableHead>Product</TableHead>
-                  <TableHead>Vendor</TableHead>
-                  <TableHead>Quantity</TableHead>
+                  <TableHead>Quantity Sold</TableHead>
                   <TableHead>Price/Unit</TableHead>
                   <TableHead className="text-right">Total Earned</TableHead>
                   <TableHead>Date</TableHead>
@@ -218,15 +236,15 @@ export default function FarmerRevenuePage() {
               <TableBody>
                 {items.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                       {searchTerm || fromDate || toDate
-                        ? "No orders match your filters"
-                        : "No revenue yet"}
+                        ? "No sales match your filters"
+                        : "No sales recorded yet"}
                     </TableCell>
                   </TableRow>
                 ) : (
                   items.map((item) => (
-                    <TableRow key={item.orderId} className="hover:bg-muted/50">
+                    <TableRow key={item.saleId} className="hover:bg-muted/50">
                       <TableCell>
                         <img
                           src={item.productImageUrl || "/placeholder.jpg"}
@@ -238,23 +256,22 @@ export default function FarmerRevenuePage() {
                       <TableCell>
                         <div>
                           <p className="font-medium">{item.productName}</p>
-                          <p className="text-xs text-muted-foreground">#{item.orderId.slice(0, 8)}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Sale #{item.saleId.slice(0, 8)}
+                          </p>
                         </div>
                       </TableCell>
-                      <TableCell className="font-medium">{item.vendorName}</TableCell>
                       <TableCell>
-                        <Badge variant="secondary">
-                          {item.quantity.toFixed(2)} {item.unitName}
-                        </Badge>
+                        <Badge variant="secondary">{item.quantitySold.toFixed(2)}</Badge>
                       </TableCell>
-                      <TableCell>₹{item.finalPricePerUnit.toFixed(2)}</TableCell>
+                      <TableCell>₹{item.price.toFixed(2)}</TableCell>
                       <TableCell className="text-right font-bold text-green-600">
-                        ₹{item.totalAmount.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                        ₹{item.totalSaleAmount.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
-                          {format(new Date(item.completedAt), "dd MMM yyyy")}
+                          {format(new Date(item.soldAt), "dd MMM yyyy")}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -264,7 +281,7 @@ export default function FarmerRevenuePage() {
             </Table>
           </div>
 
-          {/* Same Pagination */}
+          {/* Exact same pagination as Farmer Products */}
           <div className="flex justify-between items-center mt-4">
             <Button
               variant="outline"
