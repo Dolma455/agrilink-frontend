@@ -1,194 +1,227 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, LineChart, Line } from "recharts"
-import { Package, ShoppingCart, TrendingUp, Users, DollarSign, AlertTriangle, Eye } from "lucide-react"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import {
+  ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart"
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts"
+import { DollarSign, ShoppingCart, TrendingUp, Package, Plus, Eye, AlertTriangle } from "lucide-react"
 import Link from "next/link"
+import axiosInstance from "@/lib/axiosInstance"
+import { toast } from "sonner"
+
+interface VendorDashboardData {
+  kpi: {
+    totalPurchases: number
+    totalSales: number
+    pendingPurchaseOrders: number
+    netProfit: number
+  }
+  topProducts: { productName: string; totalRevenue: number }[]
+  monthlyRevenue: { month: string; revenue: number }[]
+  purchaseVsSale: { label: string; amount: number }[]
+}
 
 export default function VendorDashboard() {
-  const [alertsDialogOpen, setAlertsDialogOpen] = useState(false)
-  const [ordersDialogOpen, setOrdersDialogOpen] = useState(false)
-  const [farmersDialogOpen, setFarmersDialogOpen] = useState(false)
-  const [spendingDialogOpen, setSpendingDialogOpen] = useState(false)
+  const [data, setData] = useState<VendorDashboardData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Sample data for dashboard
-  const monthlyOrders = [
-    { month: "Jan", orders: 25 },
-    { month: "Feb", orders: 32 },
-    { month: "Mar", orders: 28 },
-    { month: "Apr", orders: 41 },
-    { month: "May", orders: 35 },
-    { month: "Jun", orders: 47 },
-  ]
+  const vendorId = typeof window !== "undefined" ? localStorage.getItem("userId") : null
 
-  const topProducts = [
-    { name: "Tomatoes", orders: 45 },
-    { name: "Onions", orders: 38 },
-    { name: "Potatoes", orders: 32 },
-    { name: "Carrots", orders: 28 },
-  ]
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      maximumFractionDigits: 0,
+    }).format(amount)
+  }
 
-  // Sample detailed data for popups
-  const recentOrders = [
-    { id: "ORD001", farmer: "Raj Kumar", product: "Tomatoes", quantity: "50kg", amount: "Rs.1,500" },
-    { id: "ORD002", farmer: "Sita Devi", product: "Onions", quantity: "30kg", amount: "Rs.1,200" },
-    { id: "ORD003", farmer: "Mohan Singh", product: "Carrots", quantity: "25kg", amount: "Rs.875" },
-  ]
+  useEffect(() => {
+    if (!vendorId) {
+      setError("Please log in to view your dashboard")
+      setLoading(false)
+      return
+    }
 
-  const pendingDeliveries = [
-    { product: "Tomatoes", quantity: "50kg", farmer: "Raj Kumar", status: "In Transit" },
-    { product: "Onions", quantity: "30kg", farmer: "Sita Devi", status: "Processing" },
-    { product: "Potatoes", quantity: "80kg", farmer: "Ram Prasad", status: "Confirmed" },
-  ]
+    const fetchDashboard = async () => {
+      try {
+        setLoading(true)
+        setError(null)
 
-  const topFarmers = [
-    { name: "Raj Kumar", location: "Punjab", orders: "15", rating: "4.8" },
-    { name: "Sita Devi", location: "Haryana", orders: "12", rating: "4.9" },
-    { name: "Mohan Singh", location: "Punjab", orders: "10", rating: "4.7" },
-  ]
+        const response = await axiosInstance.get(`/api/v1/dashboard/vendor/${vendorId}`)
+        if (response.data.isSuccess) {
+          setData(response.data.output)
+        } else {
+          throw new Error(response.data.message || "Failed to load dashboard")
+        }
+      } catch (err: any) {
+        const msg = err.response?.data?.message || err.message || "Failed to load dashboard"
+        setError(msg)
+        toast.error(msg)
+      } finally {
+        setLoading(false)
+      }
+    }
 
-  const spendingBreakdown = [
-    { category: "Vegetables", amount: "Rs.25,400", percentage: "45%" },
-    { category: "Fruits", amount: "Rs.15,200", percentage: "27%" },
-    { category: "Grains", amount: "Rs.10,800", percentage: "19%" },
-    { category: "Others", amount: "Rs.5,050", percentage: "9%" },
-  ]
+    fetchDashboard()
+  }, [vendorId])
+
+  if (loading) return <div className="p-12 text-center text-lg">Loading your dashboard...</div>
+  if (error || !data) {
+    return (
+      <div className="p-12 text-center">
+        <p className="text-red-600 text-lg">{error || "No data available"}</p>
+        <Button className="mt-4" onClick={() => window.location.reload()}>Retry</Button>
+      </div>
+    )
+  }
+
+  const { kpi, topProducts, monthlyRevenue, purchaseVsSale } = data
+  const profitMargin = kpi.totalSales > 0 ? Math.round((kpi.netProfit / kpi.totalSales) * 100) : 0
+
+  const monthlyChartData = monthlyRevenue.map(item => {
+    // Parse "01-2025" format to get month and year
+    const [month, year] = item.month.split("-")
+    const monthIndex = parseInt(month) - 1
+    const monthName = new Date(2025, monthIndex).toLocaleString("default", { month: "short" })
+    return {
+      month: `${monthName} ${year}`,
+      revenue: item.revenue,
+    }
+  })
+
+  const COLORS = ["#f97316", "#10b981", "#3b82f6", "#22c55e", "#6366f1", "#ef4444"]
+
+  // Chart configs (required for Tooltip/Legend to work without errors)
+  const monthlyConfig: ChartConfig = {
+    revenue: { label: "Revenue", color: "hsl(142, 76%, 36%)" },
+  }
+
+  const topProductsConfig: ChartConfig = {
+    totalRevenue: { label: "Revenue", color: "hsl(260, 80%, 55%)" },
+  }
+
+  const purchaseSaleConfig: ChartConfig = {
+    amount: { label: "Amount", color: "hsl(142, 76%, 36%)" },
+  }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-gray-50/50 p-4 md:p-6 lg:p-8 space-y-8">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Vendor Dashboard</h1>
-          <p className="text-muted-foreground">Welcome back! Here's your business overview.</p>
+          <p className="text-muted-foreground">Your sales, purchases & profit at a glance</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <Button variant="outline" asChild>
             <Link href="/vendor/orders">
-              <Eye className="h-4 w-4 mr-2" />
-              View Orders
+              <Eye className="h-4 w-4 mr-2" /> View Orders
             </Link>
           </Button>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
-            <div className="flex items-center gap-2">
-              <ShoppingCart className="h-4 w-4 text-orange-600" />
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setOrdersDialogOpen(true)}>
-                <Eye className="h-3 w-3" />
-              </Button>
-            </div>
+      {/* Gradient KPI Cards */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-xl">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-semibold">Total Sales</CardTitle>
+            <DollarSign className="h-6 w-6 opacity-90" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">89</div>
-            <p className="text-xs text-muted-foreground">+15% from last month</p>
+            <div className="text-3xl font-bold">{formatCurrency(kpi.totalSales)}</div>
+            <p className="text-xs opacity-90 mt-1">Revenue from customers</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Orders</CardTitle>
-            <Package className="h-4 w-4 text-orange-600" />
+        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-xl">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-semibold">Total Purchases</CardTitle>
+            <ShoppingCart className="h-6 w-6 opacity-90" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">12</div>
-            <p className="text-xs text-muted-foreground">Awaiting confirmation</p>
+            <div className="text-3xl font-bold">{formatCurrency(kpi.totalPurchases)}</div>
+            <p className="text-xs opacity-90 mt-1">Spent on farmers</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Spent</CardTitle>
-            <div className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-orange-600" />
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setSpendingDialogOpen(true)}>
-                <Eye className="h-3 w-3" />
-              </Button>
-            </div>
+        <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-xl">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-semibold">Net Profit</CardTitle>
+            <TrendingUp className="h-6 w-6 opacity-90" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">Rs.1,23,450</div>
-            <p className="text-xs text-muted-foreground">+8% from last month</p>
+            <div className="text-3xl font-bold">{formatCurrency(kpi.netProfit)}</div>
+            <p className="text-xs opacity-90 mt-1">After expenses</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Farmers</CardTitle>
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-orange-600" />
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setFarmersDialogOpen(true)}>
-                <Eye className="h-3 w-3" />
-              </Button>
-            </div>
+        <Card className="bg-gradient-to-br from-orange-500 to-red-600 text-white border-0 shadow-xl">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-semibold">Pending Orders</CardTitle>
+            <Package className="h-6 w-6 opacity-90" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">42</div>
-            <p className="text-xs text-muted-foreground">+5 new this month</p>
+            <div className="text-3xl font-bold">{kpi.pendingPurchaseOrders}</div>
+            <p className="text-xs opacity-90 mt-1">Awaiting delivery</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Charts */}
       <div className="grid gap-6 lg:grid-cols-2">
+        {/* Monthly Revenue */}
         <Card>
-          <CardHeader>
-            <CardTitle>Monthly Orders</CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle>Monthly Revenue Trend</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ChartContainer
-              config={{
-                orders: {
-                  label: "Orders",
-                  color: "hsl(24, 95%, 53%)",
-                },
-              }}
-              className="h-[300px] w-full"
-            >
+          <CardContent className="p-0">
+            <ChartContainer config={{ revenue: { label: "Revenue", color: "#10b981" } }} className="h-[280px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={monthlyOrders}>
+                <LineChart data={monthlyChartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Line type="monotone" dataKey="orders" stroke="hsl(24, 95%, 53%)" strokeWidth={2} />
+                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                  <YAxis tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12 }} />
+                  <ChartTooltip formatter={(value: number) => formatCurrency(value)} content={<ChartTooltipContent />} />
+                  <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={3} dot={{ fill: "#10b981", r: 4 }} />
                 </LineChart>
               </ResponsiveContainer>
             </ChartContainer>
           </CardContent>
         </Card>
 
+        {/* Top 5 Products - Horizontal Bar Chart */}
         <Card>
-          <CardHeader>
-            <CardTitle>Most Ordered Products</CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle>Top 5 Products by Revenue</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ChartContainer
-              config={{
-                orders: {
-                  label: "Orders",
-                  color: "hsl(24, 95%, 53%)",
-                },
-              }}
-              className="h-[300px] w-full"
-            >
+          <CardContent className="p-0">
+            <ChartContainer config={{ revenue: { label: "Revenue", color: "#3b82f6" } }} className="h-[280px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topProducts}>
+                <BarChart 
+                  data={topProducts.slice(0, 5)} 
+                  layout="vertical"
+                  margin={{ top: 5, right: 20, left: 120, bottom: 5 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="orders" fill="hsl(24, 95%, 53%)" />
+                  <XAxis type="number" tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12 }} />
+                  <YAxis 
+                    dataKey="productName"
+                    type="category"
+                    tick={{ fontSize: 12 }}
+                    width={120}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <ChartTooltip formatter={(value: number) => formatCurrency(value)} content={<ChartTooltipContent />} />
+                  <Bar dataKey="totalRevenue" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </ChartContainer>
@@ -196,220 +229,66 @@ export default function VendorDashboard() {
         </Card>
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-red-600" />
-                Alerts
-              </div>
-              <Button variant="ghost" size="sm" onClick={() => setAlertsDialogOpen(true)}>
-                <Eye className="h-4 w-4" />
-              </Button>
-            </CardTitle>
+      {/* Purchase vs Sales Comparison - Donut Chart */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-3">
+            <CardTitle>Purchase vs Sales Comparison</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Pending confirmations</span>
-              <Badge variant="destructive">5</Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Delayed deliveries</span>
-              <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-200">2</Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Payment pending</span>
-              <Badge variant="outline">3</Badge>
-            </div>
+          <CardContent className="p-0">
+            <ChartContainer config={{ amount: { label: "Amount", color: "#6366f1" } }} className="h-[280px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                  <Pie
+                    data={purchaseVsSale}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ label, amount }: { label: string; amount: number }) => `${label}: ${formatCurrency(amount)}`}
+                    innerRadius={60}
+                    outerRadius={100}
+                    fill="#8884d8"
+                    dataKey="amount"
+                  >
+                    {purchaseVsSale.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <ChartTooltip formatter={(value: number) => formatCurrency(value)} content={<ChartTooltipContent />} />
+                </PieChart>
+              </ResponsiveContainer>
+            </ChartContainer>
           </CardContent>
         </Card>
 
+        {/* Quick Summary */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-orange-600" />
-              Trending Products
-            </CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle>Quick Summary</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="text-sm">
-              <div className="font-medium">Fresh Tomatoes</div>
-              <div className="text-muted-foreground">Rs.30/kg - 5 farmers</div>
+          <CardContent className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium">Top Product</span>
+              <span className="text-sm font-bold text-green-600">{topProducts[0]?.productName || "N/A"}</span>
             </div>
-            <div className="text-sm">
-              <div className="font-medium">Organic Onions</div>
-              <div className="text-muted-foreground">Rs.40/kg - 3 farmers</div>
+            <div className="h-px bg-gray-200"></div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium">Profit Margin</span>
+              <span className="text-sm font-bold text-blue-600">{profitMargin}%</span>
             </div>
-            <div className="mt-2">
-              <Button variant="outline" size="sm" asChild className="w-full">
-                <Link href="/vendor/products/trending">
-                  <Eye className="h-3 w-3 mr-1" />
-                  View All Trending
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Stats</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Orders today</span>
-              <span className="font-medium">3</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span>Spent today</span>
-              <span className="font-medium">Rs.1,240</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span>New farmers</span>
-              <span className="font-medium">2</span>
+            <div className="h-px bg-gray-200"></div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium">Peak Month</span>
+              <span className="text-sm font-bold text-orange-600">
+                {(() => {
+                  const sorted = [...monthlyChartData].sort((a, b) => b.revenue - a.revenue)
+                  return sorted[0]?.month || "N/A"
+                })()}
+              </span>
             </div>
           </CardContent>
         </Card>
       </div>
-
-      {/* Alerts Dialog */}
-      <Dialog open={alertsDialogOpen} onOpenChange={setAlertsDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Alerts & Issues</DialogTitle>
-            <DialogDescription>Items that need your attention</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <h4 className="font-medium mb-2">Pending Deliveries</h4>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Quantity</TableHead>
-                    <TableHead>Farmer</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {pendingDeliveries.map((item, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{item.product}</TableCell>
-                      <TableCell>{item.quantity}</TableCell>
-                      <TableCell>{item.farmer}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            item.status === "In Transit"
-                              ? "secondary"
-                              : item.status === "Processing"
-                                ? "outline"
-                                : "default"
-                          }
-                        >
-                          {item.status}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Orders Dialog */}
-      <Dialog open={ordersDialogOpen} onOpenChange={setOrdersDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Recent Orders</DialogTitle>
-            <DialogDescription>Latest orders from farmers</DialogDescription>
-          </DialogHeader>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Order ID</TableHead>
-                <TableHead>Farmer</TableHead>
-                <TableHead>Product</TableHead>
-                <TableHead>Quantity</TableHead>
-                <TableHead>Amount</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {recentOrders.map((order) => (
-                <TableRow key={order.id}>
-                  <TableCell>{order.id}</TableCell>
-                  <TableCell>{order.farmer}</TableCell>
-                  <TableCell>{order.product}</TableCell>
-                  <TableCell>{order.quantity}</TableCell>
-                  <TableCell>{order.amount}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </DialogContent>
-      </Dialog>
-
-      {/* Farmers Dialog */}
-      <Dialog open={farmersDialogOpen} onOpenChange={setFarmersDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Top Farmers</DialogTitle>
-            <DialogDescription>Your most frequent suppliers</DialogDescription>
-          </DialogHeader>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Farmer Name</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Orders</TableHead>
-                <TableHead>Rating</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {topFarmers.map((farmer, index) => (
-                <TableRow key={index}>
-                  <TableCell>{farmer.name}</TableCell>
-                  <TableCell>{farmer.location}</TableCell>
-                  <TableCell>{farmer.orders}</TableCell>
-                  <TableCell>{farmer.rating}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </DialogContent>
-      </Dialog>
-
-      {/* Spending Dialog */}
-      <Dialog open={spendingDialogOpen} onOpenChange={setSpendingDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Spending Breakdown</DialogTitle>
-            <DialogDescription>Spending by product category</DialogDescription>
-          </DialogHeader>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Category</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Percentage</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {spendingBreakdown.map((item, index) => (
-                <TableRow key={index}>
-                  <TableCell>{item.category}</TableCell>
-                  <TableCell>{item.amount}</TableCell>
-                  <TableCell>{item.percentage}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
