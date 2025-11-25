@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, Search, Filter } from "lucide-react"
+import { DollarSign, Package, TrendingUp, Calendar, ShoppingBag, Search, Filter, Loader2 } from "lucide-react"
 import axiosInstance from "@/lib/axiosInstance"
 import { format } from "date-fns"
 
@@ -19,6 +19,8 @@ interface SaleItem {
   price: number
   totalSaleAmount: number
   soldAt: string
+  imageLoading?: boolean
+  imageError?: boolean
 }
 
 interface VendorRevenueResponse {
@@ -60,7 +62,13 @@ export default function VendorRevenuePage() {
       if (toDate) params.toDate = toDate
 
       const res = await axiosInstance.get(`/api/v1/revenue/vendor/${vendorId}`, { params })
-      setResponse(res.data)
+      // Initialize image loading states
+      const dataWithImageStates = (res.data.data || []).map((item: SaleItem) => ({
+        ...item,
+        imageLoading: true,
+        imageError: false,
+      }))
+      setResponse({ ...res.data, data: dataWithImageStates })
       setCurrentPage(res.data.currentPage || 1)
     } catch (err: any) {
       console.error("Failed to fetch vendor revenue:", err.response?.data || err.message)
@@ -87,6 +95,18 @@ export default function VendorRevenuePage() {
 
   const items = response?.data || []
   const totalPages = response?.totalPages || 1
+
+  const updateImageState = (saleId: string, updates: Partial<Pick<SaleItem, 'imageLoading' | 'imageError'>>) => {
+    setResponse((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        data: prev.data.map((item) =>
+          item.saleId === saleId ? { ...item, ...updates } : item
+        ),
+      }
+    })
+  }
 
   if (loading && !response) {
     return (
@@ -174,15 +194,7 @@ export default function VendorRevenuePage() {
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search product name..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+         
             <Input
               type="date"
               value={fromDate}
@@ -246,12 +258,26 @@ export default function VendorRevenuePage() {
                   items.map((item) => (
                     <TableRow key={item.saleId} className="hover:bg-muted/50">
                       <TableCell>
-                        <img
-                          src={item.productImageUrl || "/placeholder.jpg"}
-                          alt={item.productName}
-                          className="w-12 h-12 rounded-lg object-cover border"
-                          onError={(e) => (e.currentTarget.src = "/placeholder.jpg")}
-                        />
+                        <div className="relative w-12 h-12">
+                          {item.imageLoading && !item.imageError && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg border">
+                              <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
+                            </div>
+                          )}
+                          {item.imageError && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300 rounded-lg border">
+                              <Package className="w-6 h-6 text-gray-500" />
+                            </div>
+                          )}
+                          <img
+                            src={item.productImageUrl || "/placeholder.jpg"}
+                            alt={item.productName}
+                            className="w-12 h-12 rounded-lg object-cover border"
+                            style={{ display: item.imageLoading || item.imageError ? 'none' : 'block' }}
+                            onLoad={() => updateImageState(item.saleId, { imageLoading: false, imageError: false })}
+                            onError={() => updateImageState(item.saleId, { imageLoading: false, imageError: true })}
+                          />
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div>
