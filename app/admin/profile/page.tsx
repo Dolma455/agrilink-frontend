@@ -21,9 +21,18 @@ export default function AdminProfilePage() {
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
-  const userId = typeof window !== "undefined" ? localStorage.getItem("userId") : null
+  const [userId, setUserId] = useState<string>("")
 
-  if (!userId) router.push("/login")
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const id = localStorage.getItem("userId")
+      if (id) {
+        setUserId(id)
+      } else {
+        router.push("/login")
+      }
+    }
+  }, [router])
 
   const fetchProfile = async () => {
     if (!userId) return
@@ -42,7 +51,11 @@ export default function AdminProfilePage() {
     }
   }
 
-  useEffect(() => { fetchProfile() }, [])
+  useEffect(() => { 
+    if (userId) {
+      fetchProfile()
+    }
+  }, [userId])
 
   const handleSave = async () => { setIsEditing(false); toast.success("Profile saved!") }
   const handleChangePassword = async () => { setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" }); toast.success("Password updated!") }
@@ -58,16 +71,6 @@ export default function AdminProfilePage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Admin Profile</h1>
           <p className="text-gray-600">Manage your admin account</p>
-        </div>
-        <div className="flex gap-2">
-          {isEditing ? (
-            <>
-              <Button onClick={handleSave} className="bg-green-600 hover:bg-green-700"><Save className="h-4 w-4 mr-2"/>Save</Button>
-              <Button onClick={() => setIsEditing(false)} variant="outline"><X className="h-4 w-4 mr-2"/>Cancel</Button>
-            </>
-          ) : (
-            <Button onClick={() => setIsEditing(true)} variant="outline"><Edit className="h-4 w-4 mr-2"/>Edit Profile</Button>
-          )}
         </div>
       </div>
 
@@ -91,24 +94,6 @@ export default function AdminProfilePage() {
             <div className="space-y-2"><Label>Location</Label><Input value={profileData.location} onChange={e => setProfileData({...profileData, location: e.target.value})} disabled={!isEditing}/></div>
             <div className="space-y-2"><Label>Role</Label><Input value={profileData.role} disabled/></div>
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2"><Lock className="h-5 w-5"/>Change Password</CardTitle></CardHeader>
-        <CardContent className="space-y-4 max-w-xl">
-          <div className="space-y-2"><Label>Current Password</Label><Input type="password" value={passwordData.currentPassword} onChange={e => setPasswordData({...passwordData, currentPassword:e.target.value})}/></div>
-          <div className="space-y-2"><Label>New Password</Label><Input type="password" value={passwordData.newPassword} onChange={e => setPasswordData({...passwordData, newPassword:e.target.value})}/></div>
-          <div className="space-y-2"><Label>Confirm New Password</Label><Input type="password" value={passwordData.confirmPassword} onChange={e => setPasswordData({...passwordData, confirmPassword:e.target.value})}/></div>
-          <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleChangePassword}>Update Password</Button>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2 text-red-600"><Trash2 className="h-5 w-5"/>Delete Account</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-gray-600">Once you delete your account, there is no going back. Please be certain.</p>
-          <Button variant="destructive" onClick={handleDeleteAccount}>Delete My Account</Button>
         </CardContent>
       </Card>
     </div>

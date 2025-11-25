@@ -35,19 +35,6 @@ import {
 import axiosInstance from "@/lib/axiosInstance"
 import axiosML from "@/lib/axiosML"
 
-// Dummy revenue data
-const revenueData = [
-  { period: "Jul 2023", actual: 18500, predicted: null },
-  { period: "Aug 2023", actual: 21200, predicted: null },
-  { period: "Sep 2023", actual: 24800, predicted: null },
-  { period: "Oct 2023", actual: 28200, predicted: null },
-  { period: "Nov 2023", actual: 32100, predicted: null },
-  { period: "Dec 2023", actual: 35600, predicted: null },
-  { period: "Jan 2024", actual: 39200, predicted: 38800 },
-  { period: "Feb 2024", actual: null, predicted: 42500 },
-  { period: "Mar 2024", actual: null, predicted: 46200 },
-]
-
 export default function FarmerReports() {
   const [products, setProducts] = useState<{ id: string; name: string }[]>([])
   const [selectedProductPrice, setSelectedProductPrice] = useState<string>("")
@@ -164,41 +151,6 @@ export default function FarmerReports() {
           </span>
         </div>
       </div>
-
-      {/* Revenue Chart (dummy) */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <DollarSign className="h-6 w-6 text-green-600" />
-            Revenue Trends
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={revenueData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="period" />
-              <YAxis />
-              <Tooltip formatter={(v) => `Rs. ${Number(v).toLocaleString()}`} />
-              <Line
-                type="monotone"
-                dataKey="actual"
-                stroke="#22c55e"
-                strokeWidth={3}
-                dot={{ r: 5 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="predicted"
-                stroke="#3b82f6"
-                strokeWidth={3}
-                strokeDasharray="8 8"
-                dot={{ r: 5 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
 
       {/* Price Forecast */}
       <Card>

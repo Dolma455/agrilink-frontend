@@ -44,11 +44,6 @@ const navigation: NavItem[] = [
     href: "/farmer/reports",
     icon: BarChart3,
   },
-  {
-    name: "Notifications",
-    href: "/farmer/notifications",
-    icon: Bell,
-  },
 ]
 
 export function Sidebar({ userRole = "farmer" }: { userRole?: "farmer" | "vendor" }) {
@@ -76,11 +71,10 @@ export function Sidebar({ userRole = "farmer" }: { userRole?: "farmer" | "vendor
         userRole === "farmer"
           ? [
               { name: "All Products", href: `/${userRole}/products` },
-              { name: "Trending Products", href: `/${userRole}/products/trending` },
             ]
           : [
               { name: "Browse Products", href: `/${userRole}/products` },
-              { name: "Trending Products", href: `/${userRole}/products/trending` },
+
             ]
     } else if (item.children) {
       children = item.children.map((child) => ({
@@ -180,12 +174,6 @@ export function Sidebar({ userRole = "farmer" }: { userRole?: "farmer" | "vendor
 
       {/* Bottom section */}
       <div className="p-3 space-y-2">
-        <Link href={`/${userRole}/settings`}>
-          <Button variant="ghost" className="w-full justify-start text-gray-300 hover:bg-gray-800 hover:text-white">
-            <Settings className="mr-3 h-4 w-4" />
-            Settings
-          </Button>
-        </Link>
         <Link href="/login">
           <Button variant="ghost" className="w-full justify-start text-gray-300 hover:bg-red-600 hover:text-white">
             <LogOut className="mr-3 h-4 w-4" />

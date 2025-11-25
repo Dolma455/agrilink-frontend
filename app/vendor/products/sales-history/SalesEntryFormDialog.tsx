@@ -46,6 +46,7 @@ export default function SalesEntryFormDialog({ open, onOpenChange, onSuccess }: 
   useEffect(() => {
     if (!vendorId) return
     setLoadingProducts(true)
+
     axiosInstance
       .get(`/api/inventory/vendor?vendorId=${vendorId}&page=1&pageSize=1000`)
       .then((res) => {
@@ -56,8 +57,7 @@ export default function SalesEntryFormDialog({ open, onOpenChange, onSuccess }: 
         }))
         setProducts(mapped)
       })
-      .catch((err) => {
-        console.error(err)
+      .catch(() => {
         toast.error("Failed to load products")
         setError("Failed to load products")
       })
@@ -66,26 +66,18 @@ export default function SalesEntryFormDialog({ open, onOpenChange, onSuccess }: 
 
   const mutation = usePostMutation<unknown, any>("/api/inventory/manual-sale", {
     onSuccess: (res: any) => {
-      if (res?.success) {
-        setSuccessMsg(res.message || "Sale recorded")
-        setError(null)
-        onSuccess && onSuccess()
-        setTimeout(() => {
-          onOpenChange(false)
-          setSuccessMsg(null)
-        }, 700)
-      } else {
-        setError(res?.message || "Failed to record sale")
-      }
+      // Treat any HTTP-successful response as a success message from server.
+      setSuccessMsg(res?.message || "Sale recorded successfully!")
+      setError(null)
+      onSuccess && onSuccess()
     },
     onError: (err: any) => {
-      console.error(err)
-      setError(err?.response?.data?.message || String(err))
-      toast.error(err?.response?.data?.message || "Failed to record sale")
+      setError(err?.response?.data?.message || "Failed to record sale")
+      toast.error(err?.response?.data?.message || "Error")
     },
   })
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
 
@@ -117,92 +109,110 @@ export default function SalesEntryFormDialog({ open, onOpenChange, onSuccess }: 
     mutation.mutate(payload)
   }
 
+  const closeAllDialogs = () => {
+    setSuccessMsg(null)
+    onOpenChange(false)
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Add Manual Sale</DialogTitle>
-        </DialogHeader>
+    <>
+      {/* Main Form Dialog */}
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Manual Sale</DialogTitle>
+          </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="grid gap-3">
-          <div>
-            <label className="text-sm">Product</label>
-            <Select value={productId} onValueChange={setProductId}>
-              <SelectTrigger className="w-full mt-1">
-                <SelectValue>
-                  {productId
-                    ? products.find((p) => p.productId === productId)?.productName
-                    : "Select product"}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {loadingProducts ? (
-                  <SelectItem value="loading" disabled>
-                    Loading...
-                  </SelectItem>
-                ) : (
-                  products.map((p) => (
-                    <SelectItem key={p.productId} value={p.productId}>
-                      {p.productName}
+          <form onSubmit={handleSubmit} className="grid gap-3">
+            <div>
+              <label className="text-sm">Product</label>
+              <Select value={productId} onValueChange={setProductId}>
+                <SelectTrigger className="w-full mt-1">
+                  <SelectValue placeholder="Select product" />
+                </SelectTrigger>
+                <SelectContent>
+                  {loadingProducts ? (
+                    <SelectItem value="loading" disabled>
+                      Loading...
                     </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-          </div>
+                  ) : (
+                    products.map((p) => (
+                      <SelectItem key={p.productId} value={p.productId}>
+                        {p.productName}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div>
-            <label className="text-sm">Quantity</label>
-            <Input
-              type="number"
-              value={quantity}
-              onChange={(e) => setQuantity(Number(e.target.value))}
-              className="mt-1"
-            />
-          </div>
+            <div>
+              <label className="text-sm">Quantity</label>
+              <Input
+                type="number"
+                value={quantity}
+                onChange={(e) => setQuantity(Number(e.target.value))}
+                className="mt-1"
+              />
+            </div>
 
-          <div>
-            <label className="text-sm">Price per Unit</label>
-            <Input
-              type="number"
-              value={pricePerUnit}
-              onChange={(e) => setPricePerUnit(Number(e.target.value))}
-              className="mt-1"
-              placeholder="Enter price per unit"
-            />
-          </div>
+            <div>
+              <label className="text-sm">Price per Unit</label>
+              <Input
+                type="number"
+                value={pricePerUnit}
+                onChange={(e) => setPricePerUnit(Number(e.target.value))}
+                className="mt-1"
+                placeholder="Enter price per unit"
+              />
+            </div>
 
-          <div>
-            <label className="text-sm">Sold At</label>
-            <Input
-              type="datetime-local"
-              value={soldAt}
-              onChange={(e) => setSoldAt(e.target.value)}
-              className="mt-1"
-            />
-          </div>
+            <div>
+              <label className="text-sm">Sold At</label>
+              <Input
+                type="datetime-local"
+                value={soldAt}
+                onChange={(e) => setSoldAt(e.target.value)}
+                className="mt-1"
+              />
+            </div>
 
-          <div>
-            <label className="text-sm">Note</label>
-            <Input
-              type="text"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              className="mt-1"
-            />
-          </div>
+            <div>
+              <label className="text-sm">Note</label>
+              <Input
+                type="text"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                className="mt-1"
+              />
+            </div>
 
-          {error && <div className="text-sm text-destructive">{error}</div>}
-          {successMsg && <div className="text-sm text-success">{successMsg}</div>}
+            {error && <div className="text-sm text-red-600">{error}</div>}
 
-          <DialogFooter className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit">Submit</Button>
+            <DialogFooter className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">Submit</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Success Dialog */}
+      <Dialog open={!!successMsg} onOpenChange={closeAllDialogs}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-green-700">Success</DialogTitle>
+          </DialogHeader>
+
+          <p className="text-green-600 font-medium">{successMsg}</p>
+
+          <DialogFooter>
+            <Button onClick={closeAllDialogs}>OK</Button>
           </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

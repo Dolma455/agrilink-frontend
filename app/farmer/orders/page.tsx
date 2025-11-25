@@ -42,13 +42,18 @@ export default function FarmerOrdersPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [totalPages, setTotalPages] = useState(1)
+  const [farmerId, setFarmerId] = useState<string>("")
 
-  const farmerId = localStorage.getItem("userId")
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const id = localStorage.getItem("userId")
+      if (id) setFarmerId(id)
+    }
+  }, [])
 
   // Fetch orders with pagination
   const fetchOrders = async (page: number = 1, size: number = 10) => {
     if (!farmerId) {
-      toast.error("User not logged in. Please log in to view orders.")
       return
     }
 
@@ -70,8 +75,10 @@ export default function FarmerOrdersPage() {
   }
 
   useEffect(() => {
-    fetchOrders(currentPage, pageSize)
-  }, [currentPage, pageSize])
+    if (farmerId) {
+      fetchOrders(currentPage, pageSize)
+    }
+  }, [currentPage, pageSize, farmerId])
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
@@ -97,15 +104,7 @@ export default function FarmerOrdersPage() {
 
     try {
       const response = await axiosInstance.patch(
-        "/api/order/update-status",
-        null,
-        {
-          params: {
-            orderId: selectedOrder.id,
-            userId: farmerId,
-            status: statusUpdate,
-          },
-        }
+        `/api/order/update-status?orderId=${selectedOrder.id}&userId=${farmerId}&status=${statusUpdate}`
       )
 
       if (response.data?.isSuccess) {

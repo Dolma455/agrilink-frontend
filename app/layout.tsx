@@ -8,9 +8,8 @@ import { Providers } from "./providers"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "AgriLink - Farm Management Platform",
+  title: "AgriLink - Smart Farm-to-Market Platform",
   description: "Connect, manage, and grow your agricultural business",
-    generator: 'v0.dev'
 }
 
 export default function RootLayout({

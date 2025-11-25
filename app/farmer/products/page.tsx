@@ -234,47 +234,8 @@ export default function ProductDashboard() {
                   />
                 </div>
               </div>
-              <div>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="All Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {statusOptions.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="All Categories" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-end">
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => {
-                    setSearchTerm("")
-                    setStatusFilter("all")
-                    setCategoryFilter("all")
-                  }}
-                >
-                  Clear Filters
-                </Button>
-              </div>
+              
+              
             </div>
           </CardContent>
         </Card>
