@@ -73,7 +73,7 @@ export default function MarketHubCardList({ products, productList, isLoading, on
       return (
         <div className="flex items-center gap-1 text-green-600">
           <PackageCheck className="h-3 w-3" />
-          Open
+          {status}
         </div>
       )
     }
