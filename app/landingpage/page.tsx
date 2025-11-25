@@ -175,7 +175,7 @@ function Footer() {
               </a>
               <div className="text-gray-400 flex items-start gap-2">
                 <MapPin className="w-4 h-4 mt-1" />
-                <span>AgriLink<br/>Makalbari, Kathmandu</span>
+                <span>AgriLink<br/>Kathmandu</span>
               </div>
             </div>
           </div>
@@ -254,13 +254,13 @@ export default function Page() {
     {
       name: "Fresh Fruits",
       description: "Seasonal and tropical fruits, ripe and ready",
-      image: "https://images.unsplash.com/photo-1607130813443-243737c21f7d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb2xvcmZ1bCUyMGZyZXNoJTIwZnJ1aXRzfGVufDF8fHx8MTc2MzEzNjczM3ww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+      image: "https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=800&auto=format&fit=crop&q=80",
       icon: <Apple className="w-6 h-6" />
     },
     {
       name: "Vegetables",
       description: "Farm-fresh vegetables delivered daily",
-      image: "https://images.unsplash.com/photo-1657288649124-b80bdee3c17e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxvcmdhbmljJTIwdmVnZXRhYmxlcyUyMGZyZXNofGVufDF8fHx8MTc2MzA4NTEwOHww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+      image: "https://images.unsplash.com/photo-1597362925123-77861d3fbac7?w=800&auto=format&fit=crop&q=80",
       icon: <Carrot className="w-6 h-6" />
     },
     {
@@ -272,19 +272,19 @@ export default function Page() {
     {
       name: "Pulses",
       description: "High-quality lentils, beans, and legumes",
-      image: "https://images.unsplash.com/photo-1607863376392-35c6ff892349?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsZW50aWxzJTIwYmVhbnMlMjBjb2xvcmZ1bHxlbnwxfHx8fDE3NjMxMzY3MzN8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+      image: "https://images.unsplash.com/photo-1615485500704-8e990f9900f7?w=800&auto=format&fit=crop&q=80",
       icon: <Bean className="w-6 h-6" />
     },
     {
       name: "Grains",
       description: "Premium wheat, rice, barley, and more",
-      image: "https://images.unsplash.com/photo-1595360584848-6404da6fe097?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3aGVhdCUyMGdyYWluJTIwaGFydmVzdHxlbnwxfHx8fDE3NjMxMDYyMDd8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+      image: "https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=800&auto=format&fit=crop&q=80",
       icon: <Wheat className="w-6 h-6" />
     },
     {
       name: "Leafy Vegetables",
       description: "Fresh greens like spinach, lettuce, kale",
-      image: "https://images.unsplash.com/photo-1657411658219-573d47e402c1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmcmVzaCUyMGdyZWVuJTIwbGV0dHVjZXxlbnwxfHx8fDE3NjMwNjU2Njh8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+      image: "https://images.unsplash.com/photo-1622206151226-18ca2c9ab4a1?w=800&auto=format&fit=crop&q=80",
       icon: <Leaf className="w-6 h-6" />
     }
   ];
@@ -462,7 +462,7 @@ export default function Page() {
             <div className="relative">
               <div className="relative rounded-3xl overflow-hidden shadow-2xl ring-1 ring-gray-200 dark:ring-gray-800">
                 <ImageWithFallback
-                  src="https://images.unsplash.com/photo-1747503331142-27f458a1498c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmYXJtZXJzJTIwbWFya2V0JTIwZnJlc2glMjBwcm9kdWNlfGVufDF8fHx8MTc2MzEzNjczNXww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
+                  src="https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=1080&h=720&auto=format&fit=crop&q=80"
                   alt="Farmers market fresh produce"
                   className="w-full h-auto"
                     fallbackSrc="https://via.placeholder.com/1080x720?text=Image+Unavailable"
@@ -777,7 +777,7 @@ export default function Page() {
               className="bg-white text-green-600 hover:bg-gray-100 shadow-2xl hover:shadow-3xl transition-all"
               style={{ fontSize: '1.25rem', padding: '1.75rem 3rem' }}
             >
-              <a href="/register" className="flex items-center gap-2">
+              <a href="/signup" className="flex items-center gap-2">
                 Get Started Free
                 <ArrowRight className="w-6 h-6" />
               </a>
