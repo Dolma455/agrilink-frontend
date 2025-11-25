@@ -37,11 +37,6 @@ const navigation = [
     icon: List,
   },
 
-  {
-    name: "Notifications",
-    href: "/admin/notifications",
-    icon: Bell,
-  },
 ]
 
 export function AdminSidebar() {

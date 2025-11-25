@@ -30,6 +30,11 @@ const navigation = [
     icon: Home,
   },
   {
+    name: "Market Trends",
+    href: "/vendor/market-trend",
+    icon: TrendingUp,
+  },
+  {
     name: "Revenue",
     href: "/vendor/revenue",
     icon: BarChart3,
@@ -41,7 +46,6 @@ const navigation = [
     children: [
       { name: "All Inventory", href: "/vendor/products", icon: Package },
       { name: "Sales History", href: "/vendor/products/sales-history", icon: History },
-      { name: "Trending Products", href: "/vendor/products/trending", icon: TrendingUp },
       { name: "EOQ Recommendation", href: "/vendor/eoq", icon: Calculator },
     ]
   },
@@ -59,11 +63,6 @@ const navigation = [
     name: "Reports & Stats",
     href: "/vendor/reports",
     icon: BarChart3,
-  },
-  {
-    name: "Notifications",
-    href: "/vendor/notifications",
-    icon: Bell,
   },
 ]
 
@@ -146,12 +145,6 @@ export function VendorSidebar() {
 
       {/* Bottom Section */}
       <div className="p-4 space-y-2">
-        <Link href="/vendor/settings">
-          <Button variant="ghost" className="w-full justify-start text-gray-300 hover:bg-gray-800 hover:text-white">
-            <Settings className="mr-3 h-5 w-5" />
-            Settings
-          </Button>
-        </Link>
         <Link href="/login">
           <Button variant="ghost" className="w-full justify-start text-gray-300 hover:bg-red-900/50 hover:text-red-400">
             <LogOut className="mr-3 h-5 w-5" />
